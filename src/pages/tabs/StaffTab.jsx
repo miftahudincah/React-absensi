@@ -1,5 +1,5 @@
 // src/pages/tabs/StaffTab.jsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
 import { db } from '../../firebase/config';
 import './StaffTab.css';
@@ -21,6 +21,9 @@ const StaffTab = ({ user }) => {
   const [exportLoading, setExportLoading] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState({ sending: false, lastResult: null });
+  
+  // NEW: Photo cache state
+  const [photoCache, setPhotoCache] = useState({});
   
   // State untuk modal tambah/edit
   const [showModal, setShowModal] = useState(false);
@@ -79,6 +82,84 @@ const StaffTab = ({ user }) => {
     }, 3000);
   };
 
+  // ==================== GET STAFF PHOTO - NEW ====================
+  const getStaffPhoto = useCallback((staffId, staffName, staffEmail) => {
+    // Check cache
+    if (photoCache[staffId]) {
+      return photoCache[staffId];
+    }
+
+    // Find matching user auth
+    const userAuth = usersAuth.find(u => {
+      // Check various ID matches
+      const fpMatch = u.fpId && String(u.fpId) === String(staffId);
+      const userIdMatch = u.userId && String(u.userId) === String(staffId);
+      const uidMatch = u.uid && String(u.uid) === String(staffId);
+      const staffIdMatch = u.staffId && String(u.staffId) === String(staffId);
+      
+      // Check name (case insensitive)
+      const nameMatch = u.nama && staffName && 
+        u.nama.toLowerCase().trim() === staffName.toLowerCase().trim();
+      
+      // Check email (case insensitive)
+      const emailMatch = u.email && staffEmail && 
+        u.email.toLowerCase().trim() === staffEmail.toLowerCase().trim();
+      
+      return fpMatch || userIdMatch || uidMatch || staffIdMatch || nameMatch || emailMatch;
+    });
+
+    let photoUrl;
+
+    if (userAuth) {
+      // Check photoUrl in various formats
+      const rawPhotoUrl = userAuth.photoUrl || userAuth.photoURL || userAuth.foto || '';
+      
+      if (rawPhotoUrl && rawPhotoUrl !== 'null' && rawPhotoUrl !== 'undefined' && rawPhotoUrl.trim() !== '') {
+        // Add timestamp to avoid cache
+        const separator = rawPhotoUrl.includes('?') ? '&' : '?';
+        photoUrl = rawPhotoUrl + separator + 't=' + Date.now();
+        console.log(`📸 Staff photo found for ${staffName}: ${photoUrl}`);
+      } else {
+        // Fallback to avatar
+        const initial = staffName ? staffName.charAt(0).toUpperCase() : 'S';
+        photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(staffName || 'Staff')}&background=9b59b6&color=fff&size=64&bold=true`;
+        console.log(`🎨 Avatar fallback for staff ${staffName}`);
+      }
+    } else {
+      // No user auth, use avatar
+      const initial = staffName ? staffName.charAt(0).toUpperCase() : 'S';
+      photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(staffName || 'Staff')}&background=9b59b6&color=fff&size=64&bold=true`;
+      console.log(`🎨 Avatar fallback (no auth) for staff ${staffName}`);
+    }
+
+    // Save to cache
+    setPhotoCache(prev => {
+      const newCache = { ...prev };
+      if (newCache[staffId]) {
+        delete newCache[staffId];
+      }
+      return { ...newCache, [staffId]: photoUrl };
+    });
+
+    return photoUrl;
+  }, [usersAuth, photoCache]);
+
+  // ==================== REFRESH STAFF PHOTO CACHE ====================
+  const refreshStaffPhotoCache = useCallback((staffId) => {
+    setPhotoCache(prev => {
+      const newCache = { ...prev };
+      if (newCache[staffId]) {
+        delete newCache[staffId];
+      }
+      return newCache;
+    });
+  }, []);
+
+  // ==================== REFRESH ALL STAFF PHOTO CACHE ====================
+  const refreshAllStaffPhotoCache = useCallback(() => {
+    setPhotoCache({});
+  }, []);
+
   // ==================== GET STAFF PHONE NUMBER ====================
   const getStaffPhoneNumber = (staff) => {
     if (!staff) return null;
@@ -87,7 +168,13 @@ const StaffTab = ({ user }) => {
       return staff.noHp;
     }
     
-    const userAuth = usersAuth.find(u => u.staffId == staff.id || u.uid == staff.id);
+    const userAuth = usersAuth.find(u => 
+      u.staffId == staff.id || 
+      u.uid == staff.id || 
+      u.fpId == staff.id ||
+      u.userId == staff.id ||
+      (u.email && staff.email && u.email.toLowerCase() === staff.email.toLowerCase())
+    );
     if (userAuth?.noHp && userAuth.noHp !== '-' && userAuth.noHp !== '') {
       return userAuth.noHp;
     }
@@ -97,6 +184,21 @@ const StaffTab = ({ user }) => {
     
     return null;
   };
+
+  // ==================== GET USER AUTH FOR STAFF ====================
+  const getUserAuthForStaff = useCallback((staffId, staffName, staffEmail) => {
+    return usersAuth.find(u => {
+      const fpMatch = u.fpId && String(u.fpId) === String(staffId);
+      const userIdMatch = u.userId && String(u.userId) === String(staffId);
+      const uidMatch = u.uid && String(u.uid) === String(staffId);
+      const staffIdMatch = u.staffId && String(u.staffId) === String(staffId);
+      const nameMatch = u.nama && staffName && 
+        u.nama.toLowerCase().trim() === staffName.toLowerCase().trim();
+      const emailMatch = u.email && staffEmail && 
+        u.email.toLowerCase().trim() === staffEmail.toLowerCase().trim();
+      return fpMatch || userIdMatch || uidMatch || staffIdMatch || nameMatch || emailMatch;
+    });
+  }, [usersAuth]);
 
   // ==================== SEND WHATSAPP NOTIFICATION ====================
   const sendWhatsAppNotification = async (phoneNumber, message, type) => {
@@ -299,6 +401,8 @@ Segera lakukan absensi melalui sistem.
         });
       }
       setUsersAuth(authList);
+      // Refresh photo cache when users_auth changes
+      setPhotoCache({});
     });
 
     const codesRef = ref(db, 'codes');
@@ -404,6 +508,7 @@ Segera lakukan absensi melalui sistem.
       if (a.email) registeredEmails.add(a.email.toLowerCase());
       if (a.fpId) registeredIds.add(a.fpId.toString());
       if (a.userId) registeredIds.add(a.userId.toString());
+      if (a.staffId) registeredIds.add(a.staffId.toString());
     });
 
     const staffWithCode = new Set();
@@ -426,13 +531,18 @@ Segera lakukan absensi melalui sistem.
   // ==================== GET STAFF WITH ACCOUNT ====================
   const getStaffWithAccount = useMemo(() => {
     const registeredEmails = new Set();
+    const registeredIds = new Set();
     usersAuth.forEach(a => {
       if (a.email) registeredEmails.add(a.email.toLowerCase());
+      if (a.fpId) registeredIds.add(a.fpId.toString());
+      if (a.userId) registeredIds.add(a.userId.toString());
+      if (a.staffId) registeredIds.add(a.staffId.toString());
     });
 
     return staffData.filter(s => {
       const email = s.email?.toLowerCase() || '';
-      return registeredEmails.has(email);
+      const idStr = s.id?.toString() || '';
+      return registeredEmails.has(email) || registeredIds.has(idStr);
     });
   }, [staffData, usersAuth]);
 
@@ -577,7 +687,7 @@ Segera lakukan absensi melalui sistem.
         }
 
         const existingAuth = usersAuth.find(u => 
-          u.fpId === staffId || u.userId === staffId || u.uid === staffId
+          u.fpId === staffId || u.userId === staffId || u.uid === staffId || u.staffId === staffId
         );
         if (existingAuth) {
           setFormError(`ID "${staffId}" sudah terdaftar sebagai akun!`);
@@ -648,6 +758,8 @@ Segera lakukan absensi melalui sistem.
       await remove(ref(db, `staff/${staffId}`));
       showToast(`✅ Staff "${staffName}" berhasil dihapus!`, 'success');
       setStaffData(prev => prev.filter(s => s.id !== staffId));
+      // Remove from photo cache
+      refreshStaffPhotoCache(staffId);
     } catch (error) {
       console.error('Delete staff error:', error);
       showToast('❌ Gagal menghapus staff: ' + error.message, 'error');
@@ -699,6 +811,7 @@ Segera lakukan absensi melalui sistem.
       let deletedCount = 0;
       for (const staff of filteredStaff) {
         await remove(ref(db, `staff/${staff.id}`));
+        refreshStaffPhotoCache(staff.id);
         deletedCount++;
         console.log(`✅ Menghapus staff: ${staff.nama} (${staff.id})`);
       }
@@ -728,7 +841,8 @@ Segera lakukan absensi melalui sistem.
     const hasAccount = usersAuth.some(a => 
       a.email?.toLowerCase() === selectedStaffForCode.email?.toLowerCase() ||
       a.fpId == selectedStaffForCode.id ||
-      a.userId == selectedStaffForCode.id
+      a.userId == selectedStaffForCode.id ||
+      a.staffId == selectedStaffForCode.id
     );
     
     if (hasAccount) {
@@ -837,7 +951,8 @@ Segera lakukan absensi melalui sistem.
         const hasAccount = usersAuth.some(a => 
           a.email?.toLowerCase() === item.email?.toLowerCase() ||
           a.fpId == item.id ||
-          a.userId == item.id
+          a.userId == item.id ||
+          a.staffId == item.id
         );
         const status = hasAccount ? 'Punya Akun' : 'Belum Punya Akun';
         const hasWA = getStaffPhoneNumber(item) ? 'Ya' : 'Tidak';
@@ -871,11 +986,89 @@ Segera lakukan absensi melalui sistem.
     try {
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
-      const roleName = user?.nama || user?.email || 'Admin';
       
       const printWindow = window.open('', '_blank');
-      printWindow.document.write(`...`);
+      if (!printWindow) {
+        showToast('❌ Popup diblokir! Izinkan popup untuk mengekspor PDF.', 'error');
+        setExportLoading(false);
+        return;
+      }
+      
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Laporan Data Staff - ${dateNow}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { text-align: center; color: #333; }
+            .info { text-align: center; color: #666; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { background: #f39c12; color: white; padding: 8px; text-align: left; }
+            td { padding: 6px 8px; border: 1px solid #ddd; }
+            tr:nth-child(even) { background: #f9f9f9; }
+            .footer { margin-top: 20px; text-align: center; color: #999; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h1>📊 LAPORAN DATA STAFF/GURU</h1>
+          <p class="info">Tanggal Cetak: ${dateNow} ${timeNow}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>ID</th>
+                <th>Nama</th>
+                <th>Jabatan</th>
+                <th>Departemen</th>
+                <th>Email</th>
+                <th>No HP</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      
+      filteredStaff.forEach((item, index) => {
+        const hasAccount = usersAuth.some(a => 
+          a.email?.toLowerCase() === item.email?.toLowerCase() ||
+          a.fpId == item.id ||
+          a.userId == item.id ||
+          a.staffId == item.id
+        );
+        const status = hasAccount ? '✅ Punya Akun' : '⏳ Belum';
+        html += `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${item.id}</td>
+            <td>${item.nama || '-'}</td>
+            <td>${item.jabatan || '-'}</td>
+            <td>${item.departemen || '-'}</td>
+            <td>${item.email || '-'}</td>
+            <td>${item.noHp || '-'}</td>
+            <td>${status}</td>
+          </tr>
+        `;
+      });
+      
+      html += `
+            </tbody>
+          </table>
+          <div class="footer">
+            <p>Total Staff: ${filteredStaff.length} orang</p>
+            <p>Dicetak oleh: ${user?.name || user?.email || 'System'}</p>
+            <p>&copy; ${new Date().getFullYear()} Sistem Absensi IoT</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(html);
       printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
       
       showToast('✅ Data berhasil diekspor ke PDF!', 'success');
     } catch (error) {
@@ -955,16 +1148,16 @@ Segera lakukan absensi melalui sistem.
         <div className="header-actions">
           {canExport && (
             <div className="export-buttons">
-              <button className="btn-export-excel" onClick={exportToExcel} disabled={exportLoading}>
+              <button className="btn-export-excel" onClick={exportToExcel} disabled={exportLoading} title="Export Excel">
                 📊
               </button>
-              <button className="btn-export-pdf" onClick={exportToPDF} disabled={exportLoading}>
+              <button className="btn-export-pdf" onClick={exportToPDF} disabled={exportLoading} title="Export PDF">
                 📄
               </button>
             </div>
           )}
           {canManageStaff && (
-            <button className="btn-add-staff" onClick={openAddModal}>
+            <button className="btn-add-staff" onClick={openAddModal} title="Tambah Staff">
               ➕
             </button>
           )}
@@ -1084,7 +1277,7 @@ Segera lakukan absensi melalui sistem.
         </div>
       </div>
 
-      {/* Staff Table - Mobile Friendly Cards */}
+      {/* Staff Table - Mobile Friendly Cards WITH PHOTOS */}
       <div className="staff-table-wrapper">
         {filteredStaff.length === 0 ? (
           <div className="empty-state">
@@ -1097,7 +1290,8 @@ Segera lakukan absensi melalui sistem.
               const hasAccount = usersAuth.some(a => 
                 a.email?.toLowerCase() === item.email?.toLowerCase() ||
                 a.fpId == item.id ||
-                a.userId == item.id
+                a.userId == item.id ||
+                a.staffId == item.id
               );
               
               const hasActiveCode = allCodes.some(c => 
@@ -1105,17 +1299,45 @@ Segera lakukan absensi melalui sistem.
               );
 
               const hasWA = getStaffPhoneNumber(item);
+              
+              // Get staff photo
+              const photoUrl = getStaffPhoto(item.id, item.nama, item.email);
+              const userAuth = getUserAuthForStaff(item.id, item.nama, item.email);
 
               return (
                 <div key={item.id || index} className="staff-card">
                   <div className="staff-card-header">
                     <div className="staff-card-name">
-                      <span className="staff-card-avatar">
-                        {item.nama?.charAt(0)?.toUpperCase() || 'S'}
-                      </span>
+                      {/* NEW: Staff Avatar with Photo */}
+                      <div className="staff-card-avatar-wrapper">
+                        <img 
+                          src={photoUrl} 
+                          alt={item.nama || 'Staff'}
+                          className="staff-card-avatar-img"
+                          onError={(e) => {
+                            const initial = item.nama ? item.nama.charAt(0).toUpperCase() : 'S';
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.nama || 'Staff')}&background=9b59b6&color=fff&size=64&bold=true`;
+                          }}
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: hasAccount ? '2px solid #4caf50' : '2px solid #ff9800'
+                          }}
+                        />
+                        {hasAccount && (
+                          <span className="staff-card-badge" title="Memiliki akun">✅</span>
+                        )}
+                      </div>
                       <div>
                         <div className="staff-card-title">{item.nama || '-'}</div>
                         <div className="staff-card-id">ID: {item.id}</div>
+                        {userAuth && userAuth.photoUrl && userAuth.photoUrl !== 'null' && (
+                          <div className="staff-card-photo-status" style={{ fontSize: '10px', color: '#4caf50' }}>
+                            📸 Foto tersedia
+                          </div>
+                        )}
                       </div>
                     </div>
                     <span className="jabatan-badge" style={{ background: getJabatanColor(item.jabatan) }}>
@@ -1154,6 +1376,24 @@ Segera lakukan absensi melalui sistem.
                   </div>
                   
                   <div className="staff-card-actions">
+                    {hasAccount && (
+                      <button
+                        className="btn-action btn-refresh-photo"
+                        onClick={() => refreshStaffPhotoCache(item.id)}
+                        title="Refresh Foto"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#4a90e2',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          padding: '4px 8px',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        🔄
+                      </button>
+                    )}
                     {canGenerateCode && !hasAccount && (
                       <button
                         className="btn-action btn-generate"

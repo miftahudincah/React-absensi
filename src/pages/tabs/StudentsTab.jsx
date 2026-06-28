@@ -1,6 +1,6 @@
 // src/pages/tabs/StudentsTab.jsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { ref, onValue, set, update, remove } from 'firebase/database';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ref, onValue, set, update, remove, get } from 'firebase/database';
 import { db } from '../../firebase/config';
 import './StudentsTab.css';
 
@@ -9,17 +9,18 @@ const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
 const StudentsTab = ({ user }) => {
   const [students, setStudents] = useState([]);
   const [usersAuth, setUsersAuth] = useState([]);
-  const [attendanceData, setAttendanceData] = useState([]); // NEW: data absensi siswa
+  const [attendanceData, setAttendanceData] = useState([]);
   const [schoolConfig, setSchoolConfig] = useState({ classes: [], majors: [] });
   const [loading, setLoading] = useState(true);
-  const [loadingAttendance, setLoadingAttendance] = useState(true); // NEW
+  const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [filterJurusan, setFilterJurusan] = useState('all');
   const [photoCache, setPhotoCache] = useState({});
+  const [photoLoading, setPhotoLoading] = useState({});
   const [studentInfo, setStudentInfo] = useState({ kelas: '', jurusan: '' });
-  const [whatsappStatus, setWhatsappStatus] = useState({ sending: false, lastResult: null }); // NEW
+  const [whatsappStatus, setWhatsappStatus] = useState({ sending: false, lastResult: null });
   
   // State untuk tambah siswa
   const [showAddModal, setShowAddModal] = useState(false);
@@ -68,7 +69,7 @@ const StudentsTab = ({ user }) => {
   const canEditKelasOnly = isStaff;
   const canDelete = isFullAccess;
   const canDeleteAll = isDeveloper;
-  const canSendReminder = isFullAccess || isStaff; // NEW
+  const canSendReminder = isFullAccess || isStaff;
 
   // ==================== TOAST NOTIFICATION ====================
   const showToast = (message, type = 'success') => {
@@ -78,7 +79,88 @@ const StudentsTab = ({ user }) => {
     }, 3000);
   };
 
-  // ==================== GET STUDENT PHONE NUMBER (IMPROVED) ====================
+  // ==================== GET STUDENT PHOTO - IMPROVED ====================
+  const getStudentPhoto = useCallback((studentId, studentName, studentEmail) => {
+    // Cek cache
+    if (photoCache[studentId]) {
+      return photoCache[studentId];
+    }
+
+    // Cari user auth yang cocok
+    const userAuth = usersAuth.find(u => {
+      // Cek berbagai kemungkinan ID
+      const fpMatch = u.fpId && String(u.fpId) === String(studentId);
+      const userIdMatch = u.userId && String(u.userId) === String(studentId);
+      const uidMatch = u.uid && String(u.uid) === String(studentId);
+      
+      // Cek nama (case insensitive)
+      const nameMatch = u.nama && studentName && 
+        u.nama.toLowerCase().trim() === studentName.toLowerCase().trim();
+      
+      // Cek email (case insensitive)
+      const emailMatch = u.email && studentEmail && 
+        u.email.toLowerCase().trim() === studentEmail.toLowerCase().trim();
+      
+      // Cek jika studentId ada di field lain
+      const otherMatch = u.studentId && String(u.studentId) === String(studentId);
+      
+      return fpMatch || userIdMatch || uidMatch || nameMatch || emailMatch || otherMatch;
+    });
+
+    let photoUrl;
+
+    if (userAuth) {
+      // Cek photoUrl dengan berbagai format
+      const rawPhotoUrl = userAuth.photoUrl || userAuth.photoURL || userAuth.foto || '';
+      
+      if (rawPhotoUrl && rawPhotoUrl !== 'null' && rawPhotoUrl !== 'undefined' && rawPhotoUrl.trim() !== '') {
+        // Tambahkan timestamp untuk menghindari cache
+        const separator = rawPhotoUrl.includes('?') ? '&' : '?';
+        photoUrl = rawPhotoUrl + separator + 't=' + Date.now();
+        console.log(`📸 Photo found for ${studentName}: ${photoUrl}`);
+      } else {
+        // Fallback ke avatar
+        const initial = studentName ? studentName.charAt(0).toUpperCase() : 'U';
+        photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=00bcd4&color=fff&size=64&bold=true`;
+        console.log(`🎨 Avatar fallback for ${studentName}`);
+      }
+    } else {
+      // Tidak ada user auth, gunakan avatar
+      const initial = studentName ? studentName.charAt(0).toUpperCase() : 'U';
+      photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=00bcd4&color=fff&size=64&bold=true`;
+      console.log(`🎨 Avatar fallback (no auth) for ${studentName}`);
+    }
+
+    // Simpan ke cache
+    setPhotoCache(prev => {
+      // Hapus cache lama jika ada
+      const newCache = { ...prev };
+      if (newCache[studentId]) {
+        delete newCache[studentId];
+      }
+      return { ...newCache, [studentId]: photoUrl };
+    });
+
+    return photoUrl;
+  }, [usersAuth, photoCache]);
+
+  // ==================== REFRESH PHOTO CACHE ====================
+  const refreshPhotoCache = useCallback((studentId) => {
+    setPhotoCache(prev => {
+      const newCache = { ...prev };
+      if (newCache[studentId]) {
+        delete newCache[studentId];
+      }
+      return newCache;
+    });
+  }, []);
+
+  // ==================== REFRESH ALL PHOTO CACHE ====================
+  const refreshAllPhotoCache = useCallback(() => {
+    setPhotoCache({});
+  }, []);
+
+  // ==================== GET STUDENT PHONE NUMBER ====================
   const getStudentPhoneNumber = (student) => {
     if (!student) return null;
     
@@ -110,6 +192,21 @@ const StudentsTab = ({ user }) => {
     return null;
   };
 
+  // ==================== GET USER AUTH FOR STUDENT ====================
+  const getUserAuthForStudent = useCallback((studentId, studentName, studentEmail) => {
+    return usersAuth.find(u => {
+      const fpMatch = u.fpId && String(u.fpId) === String(studentId);
+      const userIdMatch = u.userId && String(u.userId) === String(studentId);
+      const uidMatch = u.uid && String(u.uid) === String(studentId);
+      const nameMatch = u.nama && studentName && 
+        u.nama.toLowerCase().trim() === studentName.toLowerCase().trim();
+      const emailMatch = u.email && studentEmail && 
+        u.email.toLowerCase().trim() === studentEmail.toLowerCase().trim();
+      const otherMatch = u.studentId && String(u.studentId) === String(studentId);
+      return fpMatch || userIdMatch || uidMatch || nameMatch || emailMatch || otherMatch;
+    });
+  }, [usersAuth]);
+
   // ==================== SEND WHATSAPP NOTIFICATION ====================
   const sendWhatsAppNotification = async (phoneNumber, message, type) => {
     if (!phoneNumber || phoneNumber === '-' || phoneNumber === '') {
@@ -118,7 +215,6 @@ const StudentsTab = ({ user }) => {
       return { success: false, error: 'No phone number' };
     }
 
-    // Format nomor telepon
     let formattedNumber = phoneNumber.toString().replace(/[^0-9]/g, '');
     if (formattedNumber.startsWith('0')) {
       formattedNumber = '62' + formattedNumber.substring(1);
@@ -212,13 +308,11 @@ Segera lakukan absensi melalui sistem.
 
     const today = new Date().toISOString().split('T')[0];
     
-    // Get students who haven't checked in today (dari attendanceData)
     const checkedInIds = new Set();
     attendanceData
       .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang'))
       .forEach(a => checkedInIds.add(a.studentId));
 
-    // Siswa yang sesuai filter dan belum absen
     const absentStudents = filteredStudents.filter(s => !checkedInIds.has(s.id));
 
     if (absentStudents.length === 0) {
@@ -241,7 +335,6 @@ Segera lakukan absensi melalui sistem.
       } else {
         failCount++;
       }
-      // Delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -327,33 +420,6 @@ Segera lakukan absensi melalui sistem.
     }
   }, [isSiswa, user]);
 
-  // ==================== GET STUDENT PHOTO ====================
-  const getStudentPhoto = (studentId, studentName) => {
-    if (photoCache[studentId]) {
-      return photoCache[studentId];
-    }
-    
-    const userAuth = usersAuth.find(u => {
-      const fpMatch = u.fpId && String(u.fpId) === String(studentId);
-      const userIdMatch = u.userId && String(u.userId) === String(studentId);
-      const uidMatch = u.uid && String(u.uid) === String(studentId);
-      const emailMatch = u.email && studentName && u.email.toLowerCase() === studentName.toLowerCase().replace(/\s/g, '');
-      return fpMatch || userIdMatch || uidMatch || emailMatch;
-    });
-    
-    let photoUrl;
-    if (userAuth && userAuth.photoUrl && userAuth.photoUrl !== 'null' && userAuth.photoUrl !== 'undefined') {
-      const separator = userAuth.photoUrl.includes('?') ? '&' : '?';
-      photoUrl = userAuth.photoUrl + separator + 't=' + Date.now();
-    } else {
-      const initial = studentName ? studentName.charAt(0).toUpperCase() : 'U';
-      photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=00bcd4&color=fff&size=64&bold=true`;
-    }
-    
-    setPhotoCache(prev => ({ ...prev, [studentId]: photoUrl }));
-    return photoUrl;
-  };
-
   // ==================== AMBIL DATA DARI FIREBASE ====================
   useEffect(() => {
     let isMounted = true;
@@ -374,7 +440,6 @@ Segera lakukan absensi melalui sistem.
       }
       setStudents(usersList);
       
-      // Update kelas dan jurusan options
       const kelasSet = new Set();
       const jurusanSet = new Set();
       usersList.forEach(s => {
@@ -405,6 +470,7 @@ Segera lakukan absensi melalui sistem.
         });
       }
       setUsersAuth(authList);
+      // Refresh photo cache when users_auth changes
       setPhotoCache({});
       console.log(`📊 [StudentsTab] Users Auth (siswa): ${authList.length} siswa terdaftar`);
     }, (error) => {
@@ -426,7 +492,7 @@ Segera lakukan absensi melalui sistem.
       console.error('❌ Error fetching school_config:', error);
     });
 
-    // ===== NEW: AMBIL DATA ABSENSI SISWA =====
+    // ===== AMBIL DATA ABSENSI SISWA =====
     const attendanceRef = ref(db, 'absensi');
     const unsubscribeAttendance = onValue(attendanceRef, (snapshot) => {
       if (!isMounted) return;
@@ -524,8 +590,6 @@ Segera lakukan absensi melalui sistem.
     }).length;
     
     const withoutAccount = total - withAccount;
-    
-    // Hitung siswa dengan WA menggunakan getStudentPhoneNumber
     const withWA = filteredStudents.filter(s => getStudentPhoneNumber(s)).length;
     const withoutWA = total - withWA;
     
@@ -676,7 +740,6 @@ Segera lakukan absensi melalui sistem.
       return;
     }
     
-    // Jika guru/staff hanya bisa edit kelas dan nomor WA
     if (isStaff && !isFullAccess) {
       try {
         const updateData = {
@@ -685,6 +748,15 @@ Segera lakukan absensi melalui sistem.
           updatedAt: Date.now()
         };
         await update(ref(db, `users/${editingStudent.id}`), updateData);
+        
+        // Update users_auth if exists
+        const userAuth = getUserAuthForStudent(editingStudent.id, editingStudent.nama, editingStudent.email);
+        if (userAuth) {
+          await update(ref(db, `users_auth/${userAuth.uid}`), {
+            kelas: kelas,
+            parentPhone: parentPhone || ''
+          });
+        }
         
         showToast(`✅ Data siswa ${editingStudent.nama} berhasil diupdate!`, 'success');
         closeEditModal();
@@ -695,7 +767,6 @@ Segera lakukan absensi melalui sistem.
       return;
     }
     
-    // Full access (admin/wakil/dev) bisa edit semua
     if (!nama.trim() || !kelas || !jurusan) {
       alert('⚠️ Semua field wajib diisi!');
       return;
@@ -715,12 +786,7 @@ Segera lakukan absensi melalui sistem.
       
       await update(ref(db, `users/${editingStudent.id}`), updateData);
       
-      // Update juga di users_auth jika siswa sudah punya akun
-      const userAuth = usersAuth.find(u => 
-        String(u.fpId) === String(editingStudent.id) || 
-        String(u.userId) === String(editingStudent.id) ||
-        (u.nama && u.nama.toLowerCase() === editingStudent.nama?.toLowerCase())
-      );
+      const userAuth = getUserAuthForStudent(editingStudent.id, editingStudent.nama, editingStudent.email);
       if (userAuth) {
         await update(ref(db, `users_auth/${userAuth.uid}`), {
           nama: nama.trim(),
@@ -728,6 +794,8 @@ Segera lakukan absensi melalui sistem.
           jurusan: jurusan,
           parentPhone: parentPhone || ''
         });
+        // Refresh photo cache after update
+        refreshPhotoCache(editingStudent.id);
       }
       
       showToast(`✅ Data siswa ${editingStudent.nama} berhasil diupdate!`, 'success');
@@ -762,14 +830,13 @@ Segera lakukan absensi melalui sistem.
     try {
       await remove(ref(db, `users/${student.id}`));
       
-      const userAuth = usersAuth.find(u => 
-        String(u.fpId) === String(student.id) || 
-        String(u.userId) === String(student.id) ||
-        (u.nama && u.nama.toLowerCase() === student.nama?.toLowerCase())
-      );
+      const userAuth = getUserAuthForStudent(student.id, student.nama, student.email);
       if (userAuth) {
         await remove(ref(db, `users_auth/${userAuth.uid}`));
       }
+      
+      // Remove from photo cache
+      refreshPhotoCache(student.id);
       
       showToast(`✅ Data siswa "${student.nama}" berhasil dihapus!${hasAcc ? ' (Akun juga dihapus)' : ''}`, 'success');
       
@@ -875,15 +942,13 @@ Segera lakukan absensi melalui sistem.
           await remove(ref(db, `users/${student.id}`));
           deletedCount++;
           
-          const userAuth = usersAuth.find(u => 
-            String(u.fpId) === String(student.id) || 
-            String(u.userId) === String(student.id) ||
-            (u.nama && u.nama.toLowerCase() === student.nama?.toLowerCase())
-          );
+          const userAuth = getUserAuthForStudent(student.id, student.nama, student.email);
           if (userAuth) {
             await remove(ref(db, `users_auth/${userAuth.uid}`));
             deletedAuthCount++;
           }
+          
+          refreshPhotoCache(student.id);
         } catch (err) {
           console.error(`Gagal hapus siswa ${student.id}:`, err);
           failedCount++;
@@ -1030,7 +1095,7 @@ Segera lakukan absensi melalui sistem.
         </div>
       </div>
 
-      {/* ⭐ WHATSAPP STATUS BANNER */}
+      {/* WhatsApp Status Banner */}
       {whatsappStatus.lastResult && (
         <div className="whatsapp-status-banner-students" style={{
           padding: '8px 16px',
@@ -1068,7 +1133,7 @@ Segera lakukan absensi melalui sistem.
         </div>
       )}
 
-      {/* ⭐ REMINDER BANNER - Kirim Pengingat WhatsApp untuk Siswa */}
+      {/* Reminder Banner */}
       {canSendReminder && (
         <div className="reminder-banner-students" style={{
           background: 'linear-gradient(135deg, rgba(255,152,0,0.12), rgba(255,152,0,0.04))',
@@ -1228,7 +1293,7 @@ Segera lakukan absensi melalui sistem.
         )}
       </div>
 
-      {/* Table - Card View */}
+      {/* Table - Card View with Improved Photos */}
       <div className="table-container-students">
         {filteredStudents.length === 0 ? (
           <div className="empty-state-students">
@@ -1239,9 +1304,13 @@ Segera lakukan absensi melalui sistem.
         ) : (
           <div className="students-cards">
             {filteredStudents.map((student) => {
-              const photoUrl = getStudentPhoto(student.id, student.nama);
+              // Get photo with improved function
+              const photoUrl = getStudentPhoto(student.id, student.nama, student.email);
               const hasAcc = hasAccount(student.id, student.nama, student.email);
               const hasWA = getStudentPhoneNumber(student);
+              
+              // Get user auth for this student
+              const userAuth = getUserAuthForStudent(student.id, student.nama, student.email);
               
               return (
                 <div key={student.id} className="student-card">
@@ -1249,10 +1318,17 @@ Segera lakukan absensi melalui sistem.
                     <div className="card-avatar">
                       <img 
                         src={photoUrl} 
-                        alt={student.nama}
+                        alt={student.nama || 'Siswa'}
                         onError={(e) => {
                           const initial = student.nama ? student.nama.charAt(0).toUpperCase() : 'U';
                           e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=00bcd4&color=fff&size=64&bold=true`;
+                        }}
+                        style={{
+                          width: '64px',
+                          height: '64px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: hasAcc ? '2px solid #4caf50' : '2px solid #ff9800'
                         }}
                       />
                       {hasAcc && <span className="card-badge" title="Memiliki akun">✅</span>}
@@ -1261,6 +1337,11 @@ Segera lakukan absensi melalui sistem.
                     <div className="card-info">
                       <div className="card-name">{student.nama}</div>
                       <div className="card-id">ID: #{student.id}</div>
+                      {userAuth && userAuth.photoUrl && userAuth.photoUrl !== 'null' && (
+                        <div className="card-photo-status" style={{ fontSize: '11px', color: '#4caf50' }}>
+                          📸 Foto tersedia
+                        </div>
+                      )}
                     </div>
                     <div className="card-status">
                       <span className={`status-badge ${hasAcc ? 'status-active' : 'status-inactive'}`}>
@@ -1287,6 +1368,14 @@ Segera lakukan absensi melalui sistem.
                         {hasWA ? `${student.parentPhone || student.noHp || 'Terdaftar'} ✅` : '-'}
                       </span>
                     </div>
+                    {userAuth && (
+                      <div className="card-row">
+                        <span className="card-label">📧 Email</span>
+                        <span className="card-value" style={{ fontSize: '12px', color: '#4a90e2' }}>
+                          {userAuth.email || '-'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="card-footer">
                     {!isSiswa && (
@@ -1304,6 +1393,24 @@ Segera lakukan absensi melalui sistem.
                         {canDelete && (
                           <button className="btn-delete" onClick={() => deleteStudent(student)}>
                             🗑️ Hapus
+                          </button>
+                        )}
+                        {userAuth && userAuth.photoUrl && (
+                          <button 
+                            className="btn-refresh-photo"
+                            onClick={() => refreshPhotoCache(student.id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#4a90e2',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              padding: '4px 8px',
+                              borderRadius: '4px'
+                            }}
+                            title="Refresh foto"
+                          >
+                            🔄 Refresh
                           </button>
                         )}
                       </>
@@ -1537,7 +1644,6 @@ Segera lakukan absensi melalui sistem.
                 </>
               )}
 
-              {/* ==================== EDIT NOMOR WA - SEMUA ROLE SELAIN SISWA ==================== */}
               {!isSiswa && (
                 <div className="form-group-students">
                   <label>📱 WhatsApp Orang Tua *</label>

@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ref, onValue, set, remove, update, get } from 'firebase/database';
 import { db } from '../../firebase/config';
+import { auth } from '../../firebase/config';  // ✅ TAMBAHKAN
+import { sendPasswordResetEmail } from 'firebase/auth';  // ✅ TAMBAHKAN
 import './UserTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -844,6 +846,7 @@ const UsersTab = ({ user }) => {
   };
 
   // ==================== SEND RESET PASSWORD (EMAIL + WHATSAPP) ====================
+  // ✅ SUDAH DIPERBAIKI - Menggunakan import dari atas
   const sendResetPassword = async (uid, name, email, phoneNumber) => {
     if (!email || email === '-') {
       showToast('❌ Email tidak ditemukan!', 'error');
@@ -861,9 +864,7 @@ const UsersTab = ({ user }) => {
     try {
       const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
       
-      const { auth } = await import('../../firebase/config');
-      const { sendPasswordResetEmail } = await import('firebase/auth');
-      
+      // ✅ LANGSUNG PAKAI sendPasswordResetEmail YANG SUDAH DI IMPORT
       const actionCodeSettings = {
         url: window.location.origin + '/login',
         handleCodeInApp: false

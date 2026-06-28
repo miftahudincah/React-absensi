@@ -5,10 +5,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  fetchSignInMethodsForEmail
+  fetchSignInMethodsForEmail,
+  signOut // ✅ GABUNGKAN signOut DI SINI
 } from 'firebase/auth';
 import { ref, set, update, get } from 'firebase/database';
-import { signOut } from 'firebase/auth';
 import './AuthPage.css';
 
 // Konfigurasi
@@ -209,7 +209,6 @@ const AuthPage = ({ onLoginSuccess }) => {
       console.log('🔑 Backend login response:', result.success ? 'Success' : 'Failed');
       
       if (result.success && result.token) {
-        // Simpan token ke localStorage
         localStorage.setItem('authToken', result.token);
         console.log('✅ JWT token saved from backend (length: ' + result.token.length + ')');
         return result.token;
@@ -253,7 +252,7 @@ const AuthPage = ({ onLoginSuccess }) => {
     }
   };
 
-  // ==================== QR SCANNER (DIPERBAIKI) ====================
+  // ==================== QR SCANNER ====================
   
   const openQrScanner = () => {
     if (typeof window.Html5Qrcode === 'undefined') {
@@ -261,7 +260,6 @@ const AuthPage = ({ onLoginSuccess }) => {
       return;
     }
     
-    // Hapus container lama jika ada (untuk mencegah duplikasi)
     const existingContainer = document.getElementById('qr-scanner-container');
     if (existingContainer && existingContainer.parentNode) {
       try {
@@ -302,7 +300,6 @@ const AuthPage = ({ onLoginSuccess }) => {
     
     document.body.appendChild(scannerContainer);
     
-    // Event listener untuk tombol tutup
     const closeBtn = document.getElementById('close-scanner-btn');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
@@ -377,9 +374,7 @@ const AuthPage = ({ onLoginSuccess }) => {
     }
   };
 
-  // ==================== CLOSE QR SCANNER (DIPERBAIKI - AMAN) ====================
   const closeQrScanner = () => {
-    // 1. Stop scanner
     if (html5QrCodeRef.current) {
       try {
         html5QrCodeRef.current.stop().then(() => {
@@ -400,20 +395,16 @@ const AuthPage = ({ onLoginSuccess }) => {
       }
     }
     
-    // 2. Hapus container dengan AMAN - cek keberadaan node
     const container = document.getElementById('qr-scanner-container');
     if (container) {
       try {
-        // Cek apakah container masih memiliki parent
         if (container.parentNode) {
           container.parentNode.removeChild(container);
         } else if (container.remove) {
-          // Fallback untuk browser modern
           container.remove();
         }
       } catch (e) {
         console.warn('Error removing container:', e);
-        // Fallback: coba hapus dengan remove() jika ada
         try {
           if (container.remove) container.remove();
         } catch (e2) {
@@ -422,7 +413,6 @@ const AuthPage = ({ onLoginSuccess }) => {
       }
     }
     
-    // Reset ref
     scannerContainerRef.current = null;
     setIsScanning(false);
   };
@@ -500,25 +490,21 @@ const AuthPage = ({ onLoginSuccess }) => {
     try {
       console.log('🔐 Attempting login for:', email);
       
-      // 1. Login dengan Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       console.log('✅ Firebase Auth success:', user.uid);
       
       resetLoginAttempts(email);
       
-      // 2. Ambil data user dari Firebase Database
       const snapshot = await get(ref(db, `users_auth/${user.uid}`));
       const userData = snapshot.val();
       
       if (userData) {
-        // 3. Set role khusus untuk developer
         if (user.email === 'zaki5go@gmail.com') {
           userData.role = 'developer';
           await update(ref(db, `users_auth/${user.uid}`), { role: 'developer' });
         }
         
-        // 4. Validasi role
         const validRoles = ['developer', 'admin', 'wakil_kepala', 'staff_tu', 'guru', 'siswa'];
         if (!userData.role || !validRoles.includes(userData.role)) {
           userData.role = 'siswa';
@@ -527,7 +513,6 @@ const AuthPage = ({ onLoginSuccess }) => {
         
         const currentUser = { uid: user.uid, email: user.email, ...userData };
         
-        // 5. Simpan user data ke localStorage
         localStorage.setItem('currentUser', JSON.stringify({
           uid: currentUser.uid,
           email: currentUser.email,
@@ -540,17 +525,14 @@ const AuthPage = ({ onLoginSuccess }) => {
         }));
         console.log('✅ User data saved to localStorage');
         
-        // 6. ⭐ KRITIKAL: Dapatkan token JWT dari backend
         console.log('🔑 Getting JWT token from backend...');
         let token = await getBackendToken(email, password);
         
-        // 7. Fallback: Jika backend gagal, gunakan Firebase ID token
         if (!token) {
           console.log('⚠️ Backend token failed, using Firebase token fallback...');
           token = await getFirebaseToken(user);
         }
         
-        // 8. Verifikasi token tersimpan
         if (token) {
           console.log('✅ Token obtained successfully');
           verifyTokenSaved();
@@ -558,7 +540,6 @@ const AuthPage = ({ onLoginSuccess }) => {
           console.warn('⚠️ No token available, but login continues');
         }
         
-        // 9. Trigger event dan callback
         window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user: currentUser } }));
         
         if (onLoginSuccess) {
@@ -677,7 +658,6 @@ const AuthPage = ({ onLoginSuccess }) => {
         throw new Error('Kode tidak valid atau sudah digunakan');
       }
       
-      // Validasi tipe kode
       if (regType === 'staff') {
         const allowedStaffTypes = ['guru', 'staff', 'staff_tu', 'wakil_kepala'];
         if (!allowedStaffTypes.includes(codeData.type)) {
@@ -903,7 +883,6 @@ const AuthPage = ({ onLoginSuccess }) => {
   useEffect(() => {
     loadLoginAttempts();
     
-    // Debug: Cek apakah ada token tersimpan
     const token = localStorage.getItem('authToken');
     if (token) {
       console.log('🔑 Token found on mount (length: ' + token.length + ')');
@@ -911,15 +890,12 @@ const AuthPage = ({ onLoginSuccess }) => {
       console.log('🔑 No token found on mount');
     }
     
-    // Cleanup function - dipanggil saat komponen unmount
     return () => {
-      // Hapus interval lockout
       if (lockoutIntervalRef.current) {
         clearInterval(lockoutIntervalRef.current);
         lockoutIntervalRef.current = null;
       }
       
-      // Cleanup QR Scanner dengan AMAN
       if (html5QrCodeRef.current) {
         try {
           html5QrCodeRef.current.stop();
@@ -930,7 +906,6 @@ const AuthPage = ({ onLoginSuccess }) => {
         html5QrCodeRef.current = null;
       }
       
-      // Hapus container QR dengan AMAN
       const container = document.getElementById('qr-scanner-container');
       if (container) {
         try {
