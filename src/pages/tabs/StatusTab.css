@@ -1,0 +1,404 @@
+/* src/pages/tabs/StatusTab.css */
+
+/* ==================== STATUS TAB CONTAINER ==================== */
+.status-tab-container {
+  width: 100%;
+  padding: 20px 0;
+  animation: statusTabFadeIn 0.4s ease;
+}
+
+@keyframes statusTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== HEADER ==================== */
+.status-tab-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.06));
+}
+
+.status-tab-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.status-tab-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.status-tab-title h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #333);
+  margin: 0;
+}
+
+.status-tab-badge {
+  background: #ff6b6b;
+  color: white;
+  border-radius: 20px;
+  padding: 2px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: badgePop 0.3s ease;
+  display: inline-block;
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.status-tab-subtitle p {
+  font-size: 14px;
+  color: var(--text-muted, #999);
+  margin: 0;
+}
+
+/* ==================== CONTENT ==================== */
+.status-tab-content {
+  background: var(--bg-card, #ffffff);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid var(--border, rgba(0,0,0,0.06));
+  min-height: 300px;
+  transition: all 0.3s ease;
+}
+
+.status-tab-content:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* ==================== FOOTER ==================== */
+.status-tab-footer {
+  margin-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-hover, #f8f9fa);
+  border-radius: 12px;
+  border: 1px solid var(--border, rgba(0,0,0,0.06));
+}
+
+.status-tab-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted, #999);
+}
+
+.status-tab-info span:first-child {
+  font-size: 18px;
+}
+
+.status-tab-info span:last-child {
+  font-size: 13px;
+}
+
+/* ==================== EMPTY STATE ==================== */
+.status-tab-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.status-tab-empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.status-tab-empty h3 {
+  font-size: 20px;
+  color: var(--text-primary, #333);
+  margin: 0 0 8px 0;
+}
+
+.status-tab-empty p {
+  font-size: 14px;
+  color: var(--text-muted, #999);
+  margin: 0;
+}
+
+/* ==================== LOADING ==================== */
+.status-tab-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 300px;
+}
+
+.status-tab-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border, #e0e0e0);
+  border-top-color: #00bcd4;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-tab-loading p {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-muted, #999);
+}
+
+/* ==================== DARK THEME SUPPORT ==================== */
+@media (prefers-color-scheme: dark) {
+  .status-tab-content {
+    background: var(--bg-card-dark, #1e1e1e);
+    border-color: var(--border-dark, rgba(255,255,255,0.06));
+  }
+
+  .status-tab-footer {
+    background: var(--bg-hover-dark, #1a1a1a);
+    border-color: var(--border-dark, rgba(255,255,255,0.06));
+  }
+
+  .status-tab-title h2 {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .status-tab-subtitle p {
+    color: var(--text-muted-dark, #888);
+  }
+
+  .status-tab-info {
+    color: var(--text-muted-dark, #888);
+  }
+
+  .status-tab-empty h3 {
+    color: var(--text-primary-dark, #e0e0e0);
+  }
+
+  .status-tab-empty p {
+    color: var(--text-muted-dark, #888);
+  }
+
+  .status-tab-loading p {
+    color: var(--text-muted-dark, #888);
+  }
+
+  .status-tab-spinner {
+    border-color: var(--border-dark, #333);
+    border-top-color: #00bcd4;
+  }
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .status-tab-container {
+    padding: 12px 0;
+  }
+
+  .status-tab-title h2 {
+    font-size: 20px;
+  }
+
+  .status-tab-icon {
+    font-size: 28px;
+  }
+
+  .status-tab-content {
+    padding: 12px;
+    min-height: 200px;
+    border-radius: 12px;
+  }
+
+  .status-tab-footer {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .status-tab-info {
+    font-size: 12px;
+  }
+
+  .status-tab-info span:first-child {
+    font-size: 16px;
+  }
+
+  .status-tab-info span:last-child {
+    font-size: 12px;
+  }
+
+  .status-tab-empty {
+    padding: 40px 16px;
+    min-height: 200px;
+  }
+
+  .status-tab-empty-icon {
+    font-size: 48px;
+  }
+
+  .status-tab-loading {
+    padding: 40px 16px;
+    min-height: 200px;
+  }
+
+  .status-tab-spinner {
+    width: 32px;
+    height: 32px;
+  }
+
+  .status-tab-badge {
+    font-size: 10px;
+    padding: 1px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-tab-container {
+    padding: 8px 0;
+  }
+
+  .status-tab-title h2 {
+    font-size: 18px;
+  }
+
+  .status-tab-icon {
+    font-size: 24px;
+  }
+
+  .status-tab-title {
+    gap: 8px;
+  }
+
+  .status-tab-badge {
+    font-size: 9px;
+    padding: 1px 8px;
+  }
+
+  .status-tab-subtitle p {
+    font-size: 12px;
+  }
+
+  .status-tab-content {
+    padding: 8px;
+    min-height: 150px;
+    border-radius: 10px;
+  }
+
+  .status-tab-footer {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .status-tab-info {
+    font-size: 11px;
+  }
+
+  .status-tab-info span:first-child {
+    font-size: 14px;
+  }
+
+  .status-tab-info span:last-child {
+    font-size: 11px;
+  }
+
+  .status-tab-empty {
+    padding: 30px 12px;
+    min-height: 150px;
+  }
+
+  .status-tab-empty-icon {
+    font-size: 40px;
+  }
+
+  .status-tab-empty h3 {
+    font-size: 16px;
+  }
+
+  .status-tab-empty p {
+    font-size: 12px;
+  }
+
+  .status-tab-loading {
+    padding: 30px 12px;
+    min-height: 150px;
+  }
+
+  .status-tab-spinner {
+    width: 28px;
+    height: 28px;
+  }
+
+  .status-tab-loading p {
+    font-size: 12px;
+  }
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+.status-tab-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.status-tab-content::-webkit-scrollbar-track {
+  background: var(--bg-hover, #f0f0f0);
+  border-radius: 10px;
+}
+
+.status-tab-content::-webkit-scrollbar-thumb {
+  background: var(--border, #ddd);
+  border-radius: 10px;
+}
+
+.status-tab-content::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+  .status-tab-container {
+    padding: 0;
+  }
+
+  .status-tab-header {
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+  }
+
+  .status-tab-footer {
+    display: none;
+  }
+
+  .status-tab-content {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

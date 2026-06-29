@@ -1,0 +1,883 @@
+/* src/pages/tabs/ConfigTab.css */
+
+/* ==================== CONTAINER ==================== */
+.config-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+/* ==================== HEADER ==================== */
+.config-header {
+  margin-bottom: 20px;
+}
+
+.config-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.config-subtitle {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+
+/* ==================== MESSAGE ==================== */
+.config-message {
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.config-message.success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border-left: 3px solid #4caf50;
+}
+
+.config-message.error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+  border-left: 3px solid #f44336;
+}
+
+.config-message.info {
+  background: rgba(33, 150, 243, 0.15);
+  color: #64b5f6;
+  border-left: 3px solid #2196f3;
+}
+
+/* ==================== GRID ==================== */
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.config-card {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 16px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.config-card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 16px;
+}
+
+/* ==================== FORM ==================== */
+.form-group-config {
+  margin-bottom: 14px;
+}
+
+.form-group-config label {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.input-group-config {
+  display: flex;
+  gap: 8px;
+}
+
+.input-group-config input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.input-group-config input:focus {
+  outline: none;
+  border-color: #00bcd4;
+}
+
+.input-group-config input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-save-config {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #00bcd4, #2196f3);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-save-config:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.btn-save-config:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-add-config {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4caf50, #43a047);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-add-config:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.btn-add-config:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== TYPE SELECTOR ==================== */
+.type-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.type-btn {
+  padding: 8px 16px;
+  background: #2a2a3e;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.type-btn:hover {
+  background: #3a3a4e;
+}
+
+.type-btn.active {
+  border-color: #00bcd4;
+  background: rgba(0, 188, 212, 0.1);
+  color: #00bcd4;
+}
+
+/* ==================== LOGO SECTION ==================== */
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.logo-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  background: #1a1a2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.logo-placeholder {
+  font-size: 36px;
+}
+
+.logo-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-upload-logo {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-upload-logo:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.btn-upload-logo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-remove-logo {
+  padding: 8px 16px;
+  background: rgba(244, 67, 54, 0.15);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  border-radius: 8px;
+  color: #f44336;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-remove-logo:hover:not(:disabled) {
+  background: rgba(244, 67, 54, 0.25);
+}
+
+.btn-remove-logo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== ITEMS LIST ==================== */
+.items-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  min-height: 40px;
+}
+
+.empty-list {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #2a2a3e;
+  border-radius: 20px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.item-chip .btn-remove-chip {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  transition: color 0.2s;
+}
+
+.item-chip .btn-remove-chip:hover {
+  color: #f44336;
+}
+
+.form-hint {
+  display: block;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* ==================== ACCESS DENIED ==================== */
+.access-denied-config {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.access-denied-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.access-denied-config h3 {
+  color: #f44336;
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+
+.access-denied-config p {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ==================== LOADING ==================== */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #00bcd4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==================== FOOTER ==================== */
+.config-footer {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.config-footer p {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  margin: 0;
+}
+
+.config-role {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-header h1 {
+    font-size: 20px;
+  }
+  
+  .logo-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .type-selector {
+    flex-direction: column;
+  }
+  
+  .type-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .input-group-config {
+    flex-direction: column;
+  }
+  
+  .btn-save-config,
+  .btn-add-config {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .logo-actions {
+    width: 100%;
+  }
+  
+  .btn-upload-logo,
+  .btn-remove-logo {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .config-footer {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ==================== LIGHT MODE ==================== */
+@media (prefers-color-scheme: light) {
+  .config-header h1 {
+    color: #1a1a2e;
+  }
+  
+  .config-card {
+    background: #ffffff;
+  }
+  
+  .config-card h2 {
+    color: #1a1a2e;
+  }
+  
+  .form-group-config label {
+    color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .input-group-config input {
+    background: #f5f5f5;
+    color: #1a1a2e;
+  }
+  
+  .input-group-config input::placeholder {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .type-btn {
+    background: #f5f5f5;
+    color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .type-btn:hover {
+    background: #e8e8e8;
+  }
+  
+  .type-btn.active {
+    background: rgba(0, 188, 212, 0.08);
+    color: #00bcd4;
+  }
+  
+  .item-chip {
+    background: #f5f5f5;
+    color: #1a1a2e;
+  }
+  
+  .item-chip .btn-remove-chip {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .item-chip .btn-remove-chip:hover {
+    color: #f44336;
+  }
+  
+  .empty-list {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .logo-preview {
+    background: #f5f5f5;
+  }
+  
+  .config-message.success {
+    background: rgba(76, 175, 80, 0.08);
+  }
+  
+  .config-message.error {
+    background: rgba(244, 67, 54, 0.08);
+  }
+  
+  .config-message.info {
+    background: rgba(33, 150, 243, 0.08);
+  }
+  
+  .access-denied-config p {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .config-footer {
+    background: rgba(0, 0, 0, 0.02);
+  }
+  
+  .config-footer p {
+    color: rgba(0, 0, 0, 0.3);
+  }
+}
+/* ConfigTab.css - Tambahan untuk fitur baru */
+
+/* ========== TIME INPUT ========== */
+.time-input {
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 200px;
+  transition: border-color 0.3s ease;
+  background: white;
+}
+
+.time-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.input-suffix {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* ========== WORK DAYS GRID ========== */
+.work-days-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.work-day-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+  border: 2px solid transparent;
+}
+
+.work-day-checkbox:hover {
+  background: #f1f5f9;
+}
+
+.work-day-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4f46e5;
+}
+
+.day-label {
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.day-label.active {
+  color: #1e293b;
+}
+
+.day-label.inactive {
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.work-day-checkbox:has(input:checked) {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+.work-days-info {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fef9c3;
+  border-radius: 6px;
+  border-left: 3px solid #eab308;
+}
+
+/* ========== HOLIDAY FORM ========== */
+.holiday-form {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 2px dashed #e2e8f0;
+}
+
+.holiday-form .form-group-config {
+  margin-bottom: 12px;
+}
+
+.holiday-form .form-group-config:last-child {
+  margin-bottom: 0;
+}
+
+.holiday-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.holiday-form-actions .btn-save-config {
+  flex: 1;
+}
+
+.btn-cancel-config {
+  padding: 10px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel-config:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+/* ========== HOLIDAY CHIP ========== */
+.holiday-chip {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+}
+
+.holiday-chip span {
+  color: #92400e;
+}
+
+.holiday-chip .btn-remove-chip {
+  color: #92400e;
+}
+
+.holiday-chip .btn-remove-chip:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+/* ========== HOLIDAYS LIST ========== */
+.holidays-list {
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.holidays-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.holidays-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.holidays-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* ========== CONFIG SUBTITLE SMALL ========== */
+.config-subtitle-small {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: -4px;
+  margin-bottom: 12px;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .work-days-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  
+  .holiday-form-actions {
+    flex-direction: column;
+  }
+  
+  .holiday-form-actions .btn-save-config,
+  .holiday-form-actions .btn-cancel-config {
+    width: 100%;
+  }
+  
+  .time-input {
+    max-width: 100%;
+  }
+}
+/* ==================== TOGGLE SWITCH ==================== */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.toggle-switch input[type="checkbox"] {
+  width: 52px;
+  height: 28px;
+  appearance: none;
+  background: #e0e0e0;
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.toggle-switch input[type="checkbox"]:checked {
+  background: #4caf50;
+}
+
+.toggle-switch input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-switch input[type="checkbox"]:checked::before {
+  left: 27px;
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 60px;
+}
+
+/* ==================== FORM ROW ==================== */
+.form-row-config {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group-config.half {
+  margin-bottom: 0;
+}
+
+/* ==================== NOTIFICATION METHODS ==================== */
+.notification-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.method-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-input);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.method-checkbox:hover {
+  background: var(--bg-hover);
+}
+
+.method-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4caf50;
+}
+
+.method-checkbox span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.method-checkbox:has(input:checked) {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.08);
+}
+
+/* ==================== CONFIG CARD FULL ==================== */
+.config-card-full {
+  grid-column: 1 / -1;
+}
+
+/* ==================== REMINDER INFO ==================== */
+.reminder-info-config {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(33, 150, 243, 0.08);
+  border-radius: 8px;
+  border-left: 3px solid #2196f3;
+}
+
+.reminder-info-config small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .form-row-config {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .config-card-full {
+    grid-column: 1;
+  }
+  
+  .notification-methods {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .method-checkbox {
+    width: 100%;
+  }
+}
+
+/* ==================== LIGHT MODE ==================== */
+@media (prefers-color-scheme: light) {
+  .toggle-switch input[type="checkbox"] {
+    background: #d1d5db;
+  }
+  
+  .toggle-switch input[type="checkbox"]:checked {
+    background: #4caf50;
+  }
+  
+  .method-checkbox {
+    background: #f3f4f6;
+  }
+  
+  .method-checkbox:hover {
+    background: #e5e7eb;
+  }
+  
+  .method-checkbox:has(input:checked) {
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.08);
+  }
+  
+  .reminder-info-config {
+    background: rgba(33, 150, 243, 0.06);
+  }
+}

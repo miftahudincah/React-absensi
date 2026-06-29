@@ -1,0 +1,1087 @@
+/* src/pages/tabs/LogsTab.css */
+
+/* ============================================
+   ROOT VARIABLES & RESET
+   ============================================ */
+.logs-container {
+  --primary: #4a6cf7;
+  --primary-dark: #3a56d4;
+  --success: #4CAF50;
+  --danger: #f44336;
+  --warning: #ff9800;
+  --developer: #9b59b6;
+  --admin: #e74c3c;
+  --wakil: #3498db;
+  --guru: #f39c12;
+  --staff: #607d8b;
+  --siswa: #2ecc71;
+  
+  --text-primary: #2d3748;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f7fafc;
+  --bg-hover: #edf2f7;
+  --border-color: #e2e8f0;
+  
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   CONTAINER
+   ============================================ */
+.logs-container {
+  padding: 20px;
+  background: var(--bg-secondary);
+  min-height: 100vh;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.header-left {
+  flex: 1;
+  min-width: 200px;
+}
+
+.header-left h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(74, 108, 247, 0.1);
+  color: var(--primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn-auto-delete,
+.btn-delete-all,
+.btn-delete-log {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-auto-delete {
+  background: linear-gradient(135deg, var(--success), #45a049);
+  color: white;
+}
+
+.btn-auto-delete:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-auto-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-delete-all {
+  background: linear-gradient(135deg, var(--danger), #d32f2f);
+  color: white;
+}
+
+.btn-delete-all:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.btn-delete-all:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-delete-log {
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--danger);
+  font-size: 16px;
+  border-radius: 6px;
+}
+
+.btn-delete-log:hover:not(:disabled) {
+  background: rgba(244, 67, 54, 0.1);
+  transform: scale(1.1);
+}
+
+.btn-delete-log:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   FILTERS
+   ============================================ */
+.logs-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-select {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  font-size: 13px;
+  color: var(--text-primary);
+  min-width: 180px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.15);
+}
+
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.date-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition: border-color 0.2s ease;
+  min-width: 140px;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.15);
+}
+
+.date-separator {
+  color: var(--text-muted);
+  font-weight: 300;
+  padding: 0 4px;
+}
+
+/* ===== Toggle Developer Logs ===== */
+.toggle-dev-logs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 14px;
+  background: rgba(155, 89, 182, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(155, 89, 182, 0.2);
+  user-select: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.toggle-dev-logs:hover {
+  background: rgba(155, 89, 182, 0.15);
+  border-color: rgba(155, 89, 182, 0.4);
+}
+
+.toggle-dev-logs input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--developer);
+}
+
+.toggle-dev-logs .toggle-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.filter-info {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.filter-info strong {
+  color: var(--text-primary);
+}
+
+.auto-delete-status {
+  color: var(--success);
+  font-weight: 500;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
+.logs-table-container {
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 800px;
+}
+
+.logs-table thead {
+  background: var(--bg-secondary);
+}
+
+.logs-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 10;
+}
+
+.logs-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  color: var(--text-secondary);
+  transition: background 0.15s ease;
+}
+
+.logs-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.logs-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* ===== Row Variants ===== */
+.log-critical {
+  border-left: 3px solid var(--danger);
+}
+
+.log-auth {
+  border-left: 3px solid var(--primary);
+}
+
+.log-delete {
+  border-left: 3px solid var(--warning);
+}
+
+.log-auto-delete {
+  background: rgba(76, 175, 80, 0.04) !important;
+  border-left: 3px solid var(--success);
+}
+
+.log-auto-delete:hover {
+  background: rgba(76, 175, 80, 0.08) !important;
+}
+
+.log-developer {
+  background: rgba(155, 89, 182, 0.04) !important;
+  border-left: 3px solid var(--developer);
+}
+
+.log-developer:hover {
+  background: rgba(155, 89, 182, 0.08) !important;
+}
+
+/* ============================================
+   TABLE CELLS
+   ============================================ */
+.log-date-time {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.log-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.log-time {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.log-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dev-badge {
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.role-developer {
+  background: rgba(155, 89, 182, 0.15);
+  color: var(--developer);
+}
+
+.role-admin {
+  background: rgba(231, 76, 60, 0.15);
+  color: var(--admin);
+}
+
+.role-wakil_kepala {
+  background: rgba(52, 152, 219, 0.15);
+  color: var(--wakil);
+}
+
+.role-guru {
+  background: rgba(243, 156, 18, 0.15);
+  color: var(--guru);
+}
+
+.role-staff_tu {
+  background: rgba(96, 125, 139, 0.15);
+  color: var(--staff);
+}
+
+.role-siswa {
+  background: rgba(46, 204, 113, 0.15);
+  color: var(--siswa);
+}
+
+.action-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.description-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 250px;
+}
+
+.ip-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+}
+
+/* ============================================
+   STATES
+   ============================================ */
+.loading-state,
+.error-state,
+.empty-state,
+.logs-access-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-state p,
+.error-state p,
+.empty-state p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.error-state .error-icon,
+.empty-state .empty-icon,
+.logs-access-denied .access-denied-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-state h3,
+.empty-state h3,
+.logs-access-denied h3 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.logs-access-denied {
+  padding: 80px 20px;
+}
+
+.logs-access-denied .access-denied-icon {
+  font-size: 64px;
+}
+
+/* ============================================
+   PAGINATION
+   ============================================ */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.logs-footer {
+  padding: 16px 20px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-top: 4px;
+}
+
+.logs-footer p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.logs-footer code {
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.footer-role,
+.footer-status,
+.footer-delete,
+.footer-dev-toggle,
+.footer-auto-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-auto-delete {
+  color: var(--success);
+}
+
+/* ============================================
+   RESPONSIVE - TABLET & SMALL LAPTOP
+   ============================================ */
+@media (max-width: 1024px) {
+  .logs-container {
+    padding: 16px;
+  }
+  
+  .logs-header {
+    padding: 16px 20px;
+  }
+  
+  .header-left h1 {
+    font-size: 20px;
+  }
+  
+  .logs-table {
+    font-size: 13px;
+    min-width: 700px;
+  }
+  
+  .logs-table th,
+  .logs-table td {
+    padding: 10px 12px;
+  }
+  
+  .filter-select {
+    min-width: 150px;
+    font-size: 12px;
+  }
+  
+  .date-input {
+    min-width: 120px;
+    font-size: 12px;
+  }
+  
+  .description-text {
+    max-width: 180px;
+  }
+}
+
+/* ============================================
+   RESPONSIVE - MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+  .logs-container {
+    padding: 12px;
+  }
+  
+  .logs-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 12px;
+  }
+  
+  .header-left h1 {
+    font-size: 18px;
+  }
+  
+  .header-subtitle {
+    font-size: 13px;
+  }
+  
+  .header-actions {
+    justify-content: stretch;
+    gap: 8px;
+  }
+  
+  .header-actions .btn-auto-delete,
+  .header-actions .btn-delete-all {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .logs-filters {
+    padding: 12px 14px;
+  }
+  
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .filter-select {
+    width: 100%;
+    min-width: unset;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  
+  .date-range {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .date-input {
+    flex: 1;
+    min-width: 0;
+    width: calc(50% - 20px);
+    padding: 10px 10px;
+    font-size: 14px;
+  }
+  
+  .date-separator {
+    padding: 0 6px;
+  }
+  
+  .toggle-dev-logs {
+    justify-content: center;
+    padding: 8px 14px;
+    width: 100%;
+  }
+  
+  .toggle-dev-logs .toggle-label {
+    font-size: 13px;
+  }
+  
+  .filter-info {
+    font-size: 12px;
+    text-align: center;
+  }
+  
+  /* Table Mobile */
+  .logs-table-container {
+    border-radius: var(--radius-sm);
+  }
+  
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .logs-table {
+    font-size: 12px;
+    min-width: 600px;
+  }
+  
+  .logs-table th {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  
+  .logs-table td {
+    padding: 10px 10px;
+    font-size: 12px;
+  }
+  
+  .log-date {
+    font-size: 11px;
+  }
+  
+  .log-time {
+    font-size: 10px;
+  }
+  
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+  
+  .user-name {
+    font-size: 12px;
+  }
+  
+  .role-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+  
+  .action-text {
+    font-size: 12px;
+  }
+  
+  .description-text {
+    max-width: 120px;
+    font-size: 11px;
+    -webkit-line-clamp: 1;
+  }
+  
+  .ip-text {
+    font-size: 10px;
+  }
+  
+  .btn-delete-log {
+    padding: 2px 8px;
+    font-size: 14px;
+  }
+  
+  /* Pagination Mobile */
+  .pagination {
+    gap: 10px;
+    padding: 12px 0;
+  }
+  
+  .pagination-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  
+  .pagination-info {
+    font-size: 13px;
+  }
+  
+  /* Footer Mobile */
+  .logs-footer {
+    padding: 12px 16px;
+  }
+  
+  .logs-footer p {
+    font-size: 11px;
+    gap: 4px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .logs-footer code {
+    font-size: 11px;
+  }
+  
+  /* States Mobile */
+  .loading-state,
+  .error-state,
+  .empty-state {
+    padding: 40px 16px;
+  }
+  
+  .loading-state .loading-spinner {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .error-state .error-icon,
+  .empty-state .empty-icon {
+    font-size: 36px;
+  }
+}
+
+/* ============================================
+   RESPONSIVE - SMALL MOBILE
+   ============================================ */
+@media (max-width: 480px) {
+  .logs-container {
+    padding: 8px;
+  }
+  
+  .logs-header {
+    padding: 12px 14px;
+  }
+  
+  .header-left h1 {
+    font-size: 16px;
+  }
+  
+  .header-subtitle {
+    font-size: 12px;
+  }
+  
+  .header-actions .btn-auto-delete,
+  .header-actions .btn-delete-all {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  
+  .logs-filters {
+    padding: 10px 12px;
+  }
+  
+  .filter-select {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+  
+  .date-input {
+    font-size: 13px;
+    padding: 8px 8px;
+  }
+  
+  .toggle-dev-logs .toggle-label {
+    font-size: 12px;
+  }
+  
+  .logs-table {
+    font-size: 11px;
+    min-width: 500px;
+  }
+  
+  .logs-table th {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  
+  .logs-table td {
+    padding: 8px 8px;
+    font-size: 11px;
+  }
+  
+  .log-date-time {
+    gap: 1px;
+  }
+  
+  .log-date {
+    font-size: 10px;
+  }
+  
+  .log-time {
+    font-size: 9px;
+  }
+  
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+  
+  .user-name {
+    font-size: 11px;
+  }
+  
+  .role-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+  
+  .action-text {
+    font-size: 11px;
+  }
+  
+  .description-text {
+    max-width: 80px;
+    font-size: 10px;
+  }
+  
+  .ip-text {
+    font-size: 9px;
+  }
+  
+  .btn-delete-log {
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+  
+  .pagination-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  
+  .pagination-info {
+    font-size: 12px;
+  }
+  
+  .logs-footer p {
+    font-size: 10px;
+  }
+}
+
+/* ============================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ============================================ */
+@media (hover: none) {
+  .btn-auto-delete:hover:not(:disabled),
+  .btn-delete-all:hover:not(:disabled),
+  .btn-delete-log:hover:not(:disabled) {
+    transform: none;
+  }
+  
+  .logs-table tbody tr:hover {
+    background: transparent;
+  }
+  
+  .logs-table tbody tr:active {
+    background: var(--bg-hover);
+  }
+  
+  .pagination-btn:hover:not(:disabled) {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+  
+  .pagination-btn:active:not(:disabled) {
+    background: var(--primary);
+    color: white;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (Opsional)
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+  .logs-container {
+    --bg-primary: #1a202c;
+    --bg-secondary: #2d3748;
+    --bg-hover: #3a4a5a;
+    --text-primary: #e2e8f0;
+    --text-secondary: #a0aec0;
+    --text-muted: #718096;
+    --border-color: #2d3748;
+  }
+  
+  .logs-table thead {
+    background: var(--bg-secondary);
+  }
+  
+  .logs-table th {
+    background: var(--bg-secondary);
+  }
+  
+  .filter-select,
+  .date-input {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+  }
+  
+  .filter-select option {
+    background: var(--bg-secondary);
+  }
+  
+  .toggle-dev-logs {
+    background: rgba(155, 89, 182, 0.15);
+    border-color: rgba(155, 89, 182, 0.3);
+  }
+  
+  .toggle-dev-logs:hover {
+    background: rgba(155, 89, 182, 0.25);
+  }
+  
+  .pagination-btn {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+  
+  .logs-footer code {
+    background: var(--bg-secondary);
+  }
+}

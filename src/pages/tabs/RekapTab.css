@@ -1,0 +1,1226 @@
+/* src/pages/tabs/RekapTab.css - VERSI MOBILE OPTIMIZED */
+
+.rekap-container-mobile {
+  padding: 10px;
+  background: var(--bg-primary, #1a1a2e);
+  min-height: 100vh;
+  color: #fff;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ==================== LOADING & ERROR ==================== */
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: #4caf50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+.loading-state p {
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.error-state h3 {
+  color: rgba(255,255,255,0.7);
+  margin: 0 0 8px 0;
+}
+
+.error-state p {
+  color: rgba(255,255,255,0.4);
+  margin: 0 0 16px 0;
+  font-size: 13px;
+}
+
+.btn-retry {
+  padding: 8px 24px;
+  border: none;
+  border-radius: 8px;
+  background: #4caf50;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-retry:hover {
+  background: #388e3c;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==================== HEADER ==================== */
+.rekap-header-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rekap-header-mobile .header-left h1 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: #4caf50;
+}
+
+.rekap-header-mobile .header-subtitle {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  margin: 2px 0 0 0;
+}
+
+.header-actions-mobile {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.header-actions-mobile .btn-export-excel,
+.header-actions-mobile .btn-export-pdf {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #fff;
+  flex: 1;
+  text-align: center;
+  min-width: 60px;
+}
+
+.header-actions-mobile .btn-export-excel {
+  background: #25a744;
+}
+
+.header-actions-mobile .btn-export-excel:hover {
+  background: #1e8a39;
+}
+
+.header-actions-mobile .btn-export-excel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header-actions-mobile .btn-export-pdf {
+  background: #dc3545;
+}
+
+.header-actions-mobile .btn-export-pdf:hover {
+  background: #b02a37;
+}
+
+.header-actions-mobile .btn-export-pdf:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== STATS CARDS (4 Kolom di Mobile) ==================== */
+.stats-cards-mobile {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.stat-card-mobile {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 6px 2px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.stat-number-mobile {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stat-label-mobile {
+  display: block;
+  font-size: 8px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 1px;
+}
+
+.stat-card-mobile.stat-hadir-mobile .stat-number-mobile {
+  color: #4caf50;
+}
+
+.stat-card-mobile.stat-sakit-mobile .stat-number-mobile {
+  color: #ff9800;
+}
+
+.stat-card-mobile.stat-izin-mobile .stat-number-mobile {
+  color: #2196f3;
+}
+
+.stat-card-mobile.stat-alpha-mobile .stat-number-mobile {
+  color: #f44336;
+}
+
+.stat-card-mobile.stat-persen-mobile .stat-number-mobile {
+  color: #00bcd4;
+}
+
+/* ==================== PROGRESS BAR ==================== */
+.progress-container-mobile {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.progress-label-mobile {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.progress-percentage-mobile {
+  font-weight: 700;
+  color: #4caf50;
+}
+
+.progress-bar-mobile {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill-mobile {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #66bb6a);
+  border-radius: 2px;
+  transition: width 1s ease;
+}
+
+/* ==================== FILTERS - MOBILE OPTIMIZED ==================== */
+.filter-container-mobile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  align-items: center;
+}
+
+.filter-group-mobile {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 60px;
+}
+
+.filter-group-mobile label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+}
+
+.filter-group-mobile select {
+  flex: 1;
+  padding: 3px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 9px;
+  outline: none;
+  min-width: 40px;
+  cursor: pointer;
+}
+
+.filter-group-mobile select:focus {
+  border-color: #4caf50;
+}
+
+.filter-group-mobile select option {
+  background: #2a2a4a;
+  color: #fff;
+}
+
+.filter-group-mobile.custom-range {
+  flex: 2;
+  min-width: 120px;
+  gap: 3px;
+}
+
+.date-input-mobile {
+  padding: 3px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 9px;
+  outline: none;
+  flex: 1;
+  min-width: 50px;
+  cursor: pointer;
+}
+
+.date-input-mobile:focus {
+  border-color: #4caf50;
+}
+
+.date-input-mobile::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* ==================== CONTROLS - MOBILE OPTIMIZED ==================== */
+.rekap-controls-mobile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.search-box-mobile {
+  flex: 1;
+  min-width: 100%;
+  position: relative;
+}
+
+.search-input-mobile {
+  width: 100%;
+  padding: 6px 28px 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 11px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.search-input-mobile::placeholder {
+  color: rgba(255,255,255,0.25);
+}
+
+.search-input-mobile:focus {
+  border-color: #4caf50;
+}
+
+.search-clear-mobile {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px;
+  transition: color 0.3s;
+}
+
+.search-clear-mobile:hover {
+  color: #fff;
+}
+
+.sort-controls-mobile {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.sort-select-mobile {
+  padding: 5px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 10px;
+  outline: none;
+  cursor: pointer;
+  flex: 1;
+}
+
+.sort-select-mobile:focus {
+  border-color: #4caf50;
+}
+
+.sort-select-mobile option {
+  background: #2a2a4a;
+  color: #fff;
+}
+
+.sort-order-mobile {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.3s;
+}
+
+.sort-order-mobile:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* ==================== TABLE - MOBILE OPTIMIZED ==================== */
+.rekap-table-container-mobile {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.rekap-info-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.period-label-mobile {
+  color: rgba(255,255,255,0.3);
+  font-size: 9px;
+}
+
+.search-result-mobile {
+  color: #4caf50;
+}
+
+.rekap-table-wrapper-mobile {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -6px;
+  padding: 0 6px;
+}
+
+.rekap-table-mobile {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+  min-width: 560px;
+}
+
+.rekap-table-mobile thead th {
+  padding: 4px 3px;
+  text-align: left;
+  color: rgba(255,255,255,0.5);
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255,255,255,0.06);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.rekap-table-mobile thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.3s;
+}
+
+.rekap-table-mobile thead th.sortable:hover {
+  color: #fff;
+}
+
+.rekap-table-mobile tbody td {
+  padding: 4px 3px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.7);
+  font-size: 9px;
+  vertical-align: middle;
+}
+
+.rekap-table-mobile tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.student-name-cell {
+  font-weight: 600;
+  color: #fff;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==================== AVATAR DI TABEL - MOBILE ==================== */
+.student-avatar-cell {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(76, 175, 80, 0.15);
+  border: 1.5px solid rgba(76, 175, 80, 0.3);
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.student-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ==================== STATUS COLORS ==================== */
+.text-success {
+  color: #4caf50 !important;
+  font-weight: 600;
+}
+
+.text-warning {
+  color: #ff9800 !important;
+  font-weight: 600;
+}
+
+.text-danger {
+  color: #f44336 !important;
+  font-weight: 600;
+}
+
+/* ==================== BUTTON DETAIL - MOBILE ==================== */
+.btn-detail-mobile {
+  background: rgba(0, 188, 212, 0.15);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: #00bcd4;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.btn-detail-mobile:hover {
+  background: rgba(0, 188, 212, 0.35);
+  transform: scale(1.1);
+}
+
+/* ==================== EMPTY STATE ==================== */
+.empty-state-mobile {
+  text-align: center;
+  padding: 30px 12px;
+}
+
+.empty-icon-mobile {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.empty-state-mobile h3 {
+  color: rgba(255,255,255,0.5);
+  margin: 0 0 4px 0;
+  font-size: 14px;
+}
+
+.empty-state-mobile p {
+  color: rgba(255,255,255,0.3);
+  margin: 0;
+  font-size: 12px;
+}
+
+.btn-clear-search-mobile {
+  margin-top: 10px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.3s;
+}
+
+.btn-clear-search-mobile:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+/* ==================== FOOTER ==================== */
+.rekap-footer-mobile {
+  padding: 10px 0;
+  text-align: center;
+}
+
+.footer-info-mobile {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  margin: 0;
+}
+
+.footer-period-mobile {
+  color: rgba(255,255,255,0.4);
+}
+
+.footer-total-mobile {
+  color: rgba(255,255,255,0.4);
+}
+
+/* ==================== MODAL DETAIL - MOBILE OPTIMIZED ==================== */
+.modal-overlay-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 12px;
+  animation: fadeIn 0.25s ease;
+}
+
+.modal-box-mobile {
+  background: #1a1a2e;
+  border-radius: 12px;
+  max-width: 420px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,255,255,0.08);
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+.modal-header-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.modal-header-mobile h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #fff;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-close-mobile {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px;
+  transition: color 0.3s;
+}
+
+.modal-close-mobile:hover {
+  color: #fff;
+}
+
+.modal-body-mobile {
+  padding: 12px 14px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-student-info-mobile {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.modal-avatar-mobile {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #4caf50;
+  flex-shrink: 0;
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.modal-avatar-mobile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-name-mobile {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.modal-id-mobile {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+}
+
+.modal-class-mobile {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 1px;
+}
+
+/* Modal Stats - 3 Kolom */
+.modal-stats-mobile {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.modal-stat-item {
+  text-align: center;
+  padding: 6px 2px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+}
+
+.modal-stat-item .modal-stat-number {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.modal-stat-item .modal-stat-label {
+  display: block;
+  font-size: 8px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 1px;
+}
+
+.modal-stat-item.stat-hadir .modal-stat-number {
+  color: #4caf50;
+}
+
+.modal-stat-item.stat-sakit .modal-stat-number {
+  color: #ff9800;
+}
+
+.modal-stat-item.stat-izin .modal-stat-number {
+  color: #2196f3;
+}
+
+.modal-stat-item.stat-alpha .modal-stat-number {
+  color: #f44336;
+}
+
+.modal-stat-item.stat-persen .modal-stat-number {
+  color: #00bcd4;
+}
+
+/* Modal Details */
+.modal-details-mobile h4 {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  margin: 0 0 6px 0;
+}
+
+.modal-details-scroll {
+  max-height: 140px;
+  overflow-y: auto;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+}
+
+.modal-detail-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+
+.modal-detail-item:last-child {
+  border-bottom: none;
+}
+
+.modal-detail-date {
+  min-width: 60px;
+  color: rgba(255,255,255,0.5);
+  font-size: 9px;
+}
+
+.modal-detail-day {
+  min-width: 40px;
+  color: rgba(255,255,255,0.3);
+  font-size: 8px;
+}
+
+.modal-detail-status {
+  font-weight: 600;
+  font-size: 9px;
+}
+
+.modal-detail-time {
+  color: rgba(255,255,255,0.3);
+  font-family: monospace;
+  font-size: 9px;
+}
+
+/* Modal Footer */
+.modal-footer-mobile {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.btn-close-modal-mobile {
+  padding: 6px 20px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.btn-close-modal-mobile:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+.modal-details-scroll::-webkit-scrollbar,
+.rekap-table-wrapper-mobile::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.modal-details-scroll::-webkit-scrollbar-track,
+.rekap-table-wrapper-mobile::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+}
+
+.modal-details-scroll::-webkit-scrollbar-thumb,
+.rekap-table-wrapper-mobile::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+}
+
+.modal-details-scroll::-webkit-scrollbar-thumb:hover,
+.rekap-table-wrapper-mobile::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ==================== RESPONSIVE - MOBILE FIRST ==================== */
+
+/* Mobile Very Small */
+@media (max-width: 360px) {
+  .stats-cards-mobile {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+  }
+
+  .stat-number-mobile {
+    font-size: 12px;
+  }
+
+  .stat-label-mobile {
+    font-size: 7px;
+  }
+
+  .rekap-table-mobile {
+    font-size: 8px;
+    min-width: 420px;
+  }
+
+  .rekap-table-mobile thead th,
+  .rekap-table-mobile tbody td {
+    padding: 3px 2px;
+  }
+
+  .student-avatar-cell {
+    width: 20px;
+    height: 20px;
+    border-width: 1px;
+  }
+
+  .student-avatar-img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .btn-detail-mobile {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+
+  .modal-stats-mobile {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-stat-item .modal-stat-number {
+    font-size: 13px;
+  }
+
+  .modal-avatar-mobile {
+    width: 38px;
+    height: 38px;
+  }
+
+  .modal-name-mobile {
+    font-size: 12px;
+  }
+
+  .filter-group-mobile select {
+    font-size: 8px;
+    padding: 2px 3px;
+  }
+
+  .date-input-mobile {
+    font-size: 8px;
+    padding: 2px 3px;
+  }
+
+  .rekap-header-mobile .header-left h1 {
+    font-size: 14px;
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 480px) {
+  .stats-cards-mobile {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .stat-card-mobile {
+    padding: 5px 2px;
+  }
+
+  .stat-number-mobile {
+    font-size: 13px;
+  }
+
+  .stat-label-mobile {
+    font-size: 7px;
+  }
+
+  .rekap-controls-mobile {
+    flex-direction: column;
+  }
+
+  .search-box-mobile {
+    min-width: 100%;
+  }
+
+  .sort-controls-mobile {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sort-select-mobile {
+    flex: 1;
+  }
+
+  .filter-container-mobile {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .filter-group-mobile {
+    min-width: 100%;
+  }
+
+  .filter-group-mobile.custom-range {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .date-input-mobile {
+    flex: 1;
+    min-width: 50px;
+  }
+
+  .rekap-header-mobile {
+    flex-direction: column;
+  }
+
+  .header-actions-mobile {
+    width: 100%;
+  }
+
+  .header-actions-mobile button {
+    flex: 1;
+    text-align: center;
+  }
+
+  .rekap-table-mobile {
+    font-size: 8px;
+    min-width: 460px;
+  }
+
+  .rekap-table-mobile thead th,
+  .rekap-table-mobile tbody td {
+    padding: 3px 2px;
+  }
+
+  .student-avatar-cell {
+    width: 22px;
+    height: 22px;
+  }
+
+  .student-avatar-img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .modal-box-mobile {
+    max-width: 100%;
+    margin: 8px;
+    max-height: 95vh;
+    border-radius: 10px;
+  }
+
+  .modal-stats-mobile {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+  }
+
+  .modal-student-info-mobile {
+    gap: 8px;
+  }
+
+  .modal-avatar-mobile {
+    width: 40px;
+    height: 40px;
+  }
+
+  .modal-name-mobile {
+    font-size: 12px;
+  }
+
+  .modal-detail-item {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  .modal-detail-date {
+    min-width: 50px;
+    font-size: 8px;
+  }
+
+  .rekap-info-mobile {
+    font-size: 8px;
+  }
+
+  .period-label-mobile {
+    font-size: 8px;
+  }
+}
+
+/* Tablet */
+@media (min-width: 600px) and (max-width: 1024px) {
+  .stats-cards-mobile {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .stat-card-mobile {
+    padding: 10px 6px;
+  }
+
+  .stat-number-mobile {
+    font-size: 18px;
+  }
+
+  .stat-label-mobile {
+    font-size: 10px;
+  }
+
+  .rekap-table-mobile {
+    font-size: 10px;
+    min-width: auto;
+  }
+
+  .student-avatar-cell {
+    width: 30px;
+    height: 30px;
+  }
+
+  .student-avatar-img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .filter-container-mobile {
+    flex-wrap: wrap;
+  }
+
+  .filter-group-mobile {
+    min-width: 100px;
+    flex: 1;
+  }
+
+  .rekap-controls-mobile {
+    flex-wrap: wrap;
+  }
+
+  .search-box-mobile {
+    min-width: 200px;
+  }
+
+  .sort-controls-mobile {
+    width: auto;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+  .rekap-container-mobile {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .stats-cards-mobile {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card-mobile {
+    padding: 14px 10px;
+  }
+
+  .stat-number-mobile {
+    font-size: 22px;
+  }
+
+  .stat-label-mobile {
+    font-size: 11px;
+  }
+
+  .rekap-table-mobile {
+    font-size: 12px;
+    min-width: auto;
+  }
+
+  .student-avatar-cell {
+    width: 36px;
+    height: 36px;
+  }
+
+  .student-avatar-img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .filter-container-mobile {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .filter-group-mobile {
+    min-width: 120px;
+    flex: 1;
+  }
+
+  .rekap-controls-mobile {
+    flex-wrap: nowrap;
+  }
+
+  .search-box-mobile {
+    min-width: 300px;
+  }
+
+  .modal-box-mobile {
+    max-width: 500px;
+  }
+
+  .modal-avatar-mobile {
+    width: 60px;
+    height: 60px;
+  }
+
+  .modal-stats-mobile {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Dark mode support for input date picker */
+@media (prefers-color-scheme: dark) {
+  .date-input-mobile::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}

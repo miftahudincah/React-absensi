@@ -1,0 +1,995 @@
+/* src/pages/tabs/AttendanceTab.css */
+
+/* ==================== CONTAINER ==================== */
+.attendance-container-mobile {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+/* ==================== HEADER MOBILE ==================== */
+.attendance-header-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.header-left h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.header-subtitle {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  margin: 0;
+}
+
+.header-actions-mobile {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-simulate-in-mobile,
+.btn-simulate-out-mobile {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-simulate-in-mobile {
+  background: linear-gradient(135deg, #4caf50, #43a047);
+  color: white;
+}
+
+.btn-simulate-out-mobile {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+}
+
+.btn-simulate-in-mobile:hover,
+.btn-simulate-out-mobile:hover {
+  transform: scale(1.02);
+}
+
+/* ==================== STATS CARDS MOBILE ==================== */
+.stats-cards-mobile {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-card-mobile {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-number-mobile {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stat-label-mobile {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.stat-hadir-mobile .stat-number-mobile { color: #4caf50; }
+.stat-pulang-mobile .stat-number-mobile { color: #ff9800; }
+.stat-persen-mobile .stat-number-mobile { color: #00bcd4; }
+
+/* ==================== PROGRESS BAR MOBILE ==================== */
+.progress-container-mobile {
+  background: #1a1a2e;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.progress-label-mobile {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 4px;
+}
+
+.progress-percentage-mobile {
+  font-weight: 700;
+  color: #00bcd4;
+}
+
+.progress-bar-mobile {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill-mobile {
+  height: 100%;
+  background: linear-gradient(90deg, #00bcd4, #4caf50);
+  border-radius: 10px;
+  transition: width 0.8s ease;
+}
+
+/* ==================== FILTERS MOBILE ==================== */
+.filter-container-mobile {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+  background: #1a1a2e;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.filter-group-mobile {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-group-mobile label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 20px;
+}
+
+.filter-group-mobile select {
+  flex: 1;
+  padding: 5px 6px;
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  appearance: none;
+  padding-right: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.4)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+
+.filter-group-mobile select:focus {
+  outline: none;
+  border-color: #00bcd4;
+}
+
+.filter-info-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(0, 188, 212, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+}
+
+/* ==================== TABLE CARDS MOBILE ==================== */
+.table-container-mobile {
+  background: #1a1a2e;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  margin-bottom: 12px;
+}
+
+.attendance-cards-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attendance-card-mobile {
+  background: #252535;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.card-header-mobile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.card-avatar-mobile {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.card-avatar-mobile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-badge-mobile {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 8px;
+  background: #1e1e2e;
+  border-radius: 50%;
+  padding: 1px;
+}
+
+.card-wa-badge-mobile {
+  position: absolute;
+  bottom: -2px;
+  right: 14px;
+  font-size: 8px;
+}
+
+.card-info-mobile {
+  flex: 1;
+}
+
+.card-name-mobile {
+  font-weight: 600;
+  color: #fff;
+  font-size: 14px;
+}
+
+.card-id-mobile {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: monospace;
+}
+
+.card-status-mobile {
+  flex-shrink: 0;
+}
+
+.status-badge-mobile {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-hadir-mobile {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.status-pulang-mobile {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+}
+
+.status-terlambat-mobile {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+}
+
+.card-body-mobile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-row-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-label-mobile {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.card-value-mobile {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.card-footer-mobile {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: right;
+}
+
+.btn-delete-mobile {
+  background: none;
+  border: none;
+  color: rgba(244, 67, 54, 0.5);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.btn-delete-mobile:hover {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+/* ==================== EMPTY STATE MOBILE ==================== */
+.empty-state-mobile {
+  text-align: center;
+  padding: 30px 16px;
+}
+
+.empty-icon-mobile {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-state-mobile h3 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0 0 4px;
+}
+
+.empty-state-mobile p {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ==================== FOOTER MOBILE ==================== */
+.attendance-footer-mobile {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  margin-bottom: 12px;
+}
+
+.footer-info-mobile {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  margin: 0;
+}
+
+.footer-info-mobile code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+.footer-wa-info-mobile {
+  color: #25D366;
+}
+
+/* ==================== MODAL MOBILE ==================== */
+.modal-overlay-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 9999;
+  padding: 0;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-box-mobile {
+  background: #1e1e2e;
+  border-radius: 16px 16px 0 0;
+  max-width: 100%;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modal-header-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-header-left-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-icon-mobile {
+  font-size: 20px;
+}
+
+.modal-header-mobile h3 {
+  color: #fff;
+  margin: 0;
+  font-size: 16px;
+}
+
+.modal-close-mobile {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.modal-body-mobile {
+  padding: 14px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer-mobile {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Form Mobile */
+.form-group-mobile {
+  margin-bottom: 12px;
+}
+
+.form-group-mobile label {
+  display: block;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.search-input-mobile {
+  width: 100%;
+  padding: 8px 12px;
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.search-input-mobile:focus {
+  outline: none;
+  border-color: #00bcd4;
+}
+
+.status-select-mobile {
+  width: 100%;
+  padding: 8px 12px;
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.4)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.student-list-mobile {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.student-item-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: all 0.2s;
+}
+
+.student-item-mobile:last-child {
+  border-bottom: none;
+}
+
+.student-item-mobile.selected {
+  background: rgba(0, 188, 212, 0.12);
+  border-left: 3px solid #00bcd4;
+}
+
+.student-avatar-small-mobile {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.student-item-id-mobile {
+  font-weight: 600;
+  color: #00bcd4;
+  font-family: monospace;
+  font-size: 11px;
+  min-width: 40px;
+}
+
+.student-item-name-mobile {
+  flex: 1;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.student-item-class-mobile {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+}
+
+.student-item-badge-mobile,
+.student-item-wa-mobile {
+  font-size: 10px;
+}
+
+.selected-student-mobile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(76, 175, 80, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.selected-student-mobile strong {
+  color: #4caf50;
+}
+
+.wa-status-mobile {
+  color: #25D366;
+}
+
+.wa-status-no-mobile {
+  color: #f44336;
+}
+
+.btn-cancel-mobile {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-save-mobile {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #00bcd4, #2196f3);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn-save-mobile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== LOADING ==================== */
+.loading-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #00bcd4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==================== ERROR STATE ==================== */
+.error-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.error-state h3 {
+  color: #f44336;
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+
+.error-state p {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.btn-retry {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #00bcd4, #2196f3);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ==================== LIGHT MODE ==================== */
+@media (prefers-color-scheme: light) {
+  .stat-card-mobile {
+    background: #ffffff;
+  }
+  
+  .stat-number-mobile {
+    color: #1a1a2e;
+  }
+  
+  .progress-container-mobile {
+    background: #f5f5f5;
+  }
+  
+  .filter-container-mobile {
+    background: #f5f5f5;
+  }
+  
+  .filter-group-mobile select {
+    background: #ffffff;
+    color: #1a1a2e;
+  }
+  
+  .table-container-mobile {
+    background: #ffffff;
+  }
+  
+  .attendance-card-mobile {
+    background: #f8f9fa;
+  }
+  
+  .card-name-mobile {
+    color: #1a1a2e;
+  }
+  
+  .card-value-mobile {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  
+  .modal-box-mobile {
+    background: #ffffff;
+  }
+  
+  .modal-header-mobile h3 {
+    color: #1a1a2e;
+  }
+  
+  .search-input-mobile {
+    background: #f5f5f5;
+    color: #1a1a2e;
+  }
+  
+  .status-select-mobile {
+    background: #f5f5f5;
+    color: #1a1a2e;
+  }
+  
+  .empty-state-mobile h3 {
+    color: #1a1a2e;
+  }
+  
+  .empty-state-mobile p {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .footer-info-mobile {
+    color: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 480px) {
+  .stats-cards-mobile {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .filter-container-mobile {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .card-body-mobile {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  
+  .header-left h1 {
+    font-size: 17px;
+  }
+  
+  .btn-simulate-in-mobile,
+  .btn-simulate-out-mobile {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+  
+  .modal-box-mobile {
+    max-height: 90vh;
+  }
+}
+/* ==================== TOMBOL HAPUS SEMUA ==================== */
+.btn-delete-all-attendance {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border: 2px solid #ff4444;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(220, 53, 69, 0.2);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  animation: pulseDelete 2s infinite;
+}
+
+.btn-delete-all-attendance:hover {
+  background: linear-gradient(135deg, #c82333, #bd2130);
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(220, 53, 69, 0.4);
+}
+
+.btn-delete-all-attendance:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  animation: none;
+}
+
+.btn-delete-all-attendance .delete-filter-label {
+  font-size: 9px;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+@keyframes pulseDelete {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(220, 53, 69, 0.5);
+  }
+}
+
+/* ==================== BANNER DEVELOPER UNTUK ATTENDANCE ==================== */
+.developer-banner-attendance {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.12), rgba(244, 67, 54, 0.04));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.developer-banner-attendance .dev-icon {
+  font-size: 22px;
+}
+
+.developer-banner-attendance .dev-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.developer-banner-attendance .dev-status {
+  font-weight: bold;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.developer-banner-attendance .dev-status span {
+  color: #f44336;
+}
+
+.developer-banner-attendance .dev-badge {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.developer-banner-attendance .dev-badge.highlight-green {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.developer-banner-attendance .dev-badge.highlight-red {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.developer-banner-attendance .dev-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ==================== BANNER DELETE DENGAN TOMBOL BESAR ==================== */
+.delete-all-banner {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.15), rgba(220, 53, 69, 0.05));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 2px solid #dc3545;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.delete-all-banner .banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.delete-all-banner .banner-icon {
+  font-size: 24px;
+}
+
+.delete-all-banner .banner-title {
+  font-weight: bold;
+  color: #dc3545;
+  font-size: 14px;
+}
+
+.delete-all-banner .banner-info {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.delete-all-banner .banner-info strong {
+  color: #dc3545;
+}
+
+.delete-all-banner .btn-delete-banner {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.delete-all-banner .btn-delete-banner:hover {
+  background: linear-gradient(135deg, #c82333, #bd2130);
+  transform: scale(1.03);
+  box-shadow: 0 6px 25px rgba(220, 53, 69, 0.5);
+}
+
+.delete-all-banner .btn-delete-banner:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+  .delete-all-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .delete-all-banner .banner-left {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .delete-all-banner .btn-delete-banner {
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .btn-delete-all-attendance {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+  
+  .btn-delete-all-attendance .delete-filter-label {
+    display: none;
+  }
+  
+  .developer-banner-attendance .dev-info {
+    gap: 6px;
+  }
+  
+  .developer-banner-attendance .dev-count {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+  }
+}
