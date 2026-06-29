@@ -98,7 +98,13 @@ const uploadWithFallback = async (file, folder, userId) => {
 };
 
 // ==================== MAIN COMPONENT ====================
-const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
+const StatusManager = ({ 
+  user, 
+  onStatusUpdate, 
+  activeTab,
+  onViewChange,
+  showViewers = true // Default true, akan di-override oleh StatusTab
+}) => {
   // ==================== STATE ====================
   const [statuses, setStatuses] = useState([]);
   const [myStatuses, setMyStatuses] = useState([]);
@@ -124,6 +130,7 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
   const [toastMessage, setToastMessage] = useState(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [modalKey, setModalKey] = useState(0);
+  const [isViewingOwnStatus, setIsViewingOwnStatus] = useState(true);
 
   // ==================== REFS ====================
   const statusesListenerRef = useRef(null);
@@ -338,6 +345,13 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
     };
   }, [user, processStatusData]);
 
+  // ==================== NOTIFY PARENT WHEN VIEWING STATUS ====================
+  useEffect(() => {
+    if (onViewChange) {
+      onViewChange(isViewingOwnStatus);
+    }
+  }, [isViewingOwnStatus, onViewChange]);
+
   // ==================== CREATE STATUS ====================
   const handleCreateStatus = async () => {
     if (!user) {
@@ -425,6 +439,8 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
     }
 
     const isOwnStatus = userId === user.uid;
+    setIsViewingOwnStatus(isOwnStatus);
+
     if (!isOwnStatus) {
       const isFriendUser = await isFriend(userId);
       if (!isFriendUser) {
@@ -552,7 +568,12 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
   }, [currentStatusList, currentStatusIndex, user]);
 
   // ==================== VIEWERS ====================
-  const showViewers = useCallback(async (userId, statusId) => {
+  const showViewersList = useCallback(async (userId, statusId) => {
+    if (!showViewers) {
+      showToast("🔒 Fitur viewer hanya untuk status Anda sendiri", "info");
+      return;
+    }
+
     try {
       const snapshot = await get(ref(db, `statuses/${userId}/${statusId}/viewedBy`));
       const viewersData = snapshot.val() || {};
@@ -572,9 +593,9 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
           const viewer = snap.val();
           viewersList.push({
             uid: snap.key,
-            nama: viewer.nama,
-            photoUrl: viewer.photoUrl,
-            role: viewer.role
+            nama: viewer.nama || viewer.name || 'User',
+            photoUrl: viewer.photoUrl || null,
+            role: viewer.role || 'siswa'
           });
         }
       }
@@ -585,7 +606,7 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
       console.error("Error loading viewers:", err);
       showToast("❌ Gagal memuat daftar viewer: " + err.message, "error");
     }
-  }, []);
+  }, [showViewers]);
 
   // ==================== REPLIES ====================
   const sendReply = useCallback(async (statusId) => {
@@ -607,7 +628,7 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
 
       const replyData = {
         fromUid: user.uid,
-        fromName: user.nama,
+        fromName: user.nama || user.email || 'User',
         fromPhoto: user.photoUrl || null,
         message: replyMessage.trim(),
         timestamp: Date.now(),
@@ -679,11 +700,10 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
   }, []);
 
   // ==================== RENDER STATUS ITEMS ====================
-  // ==================== PERBAIKAN UTAMA: TOMBOL + SELALU ADA ====================
   const renderStatusItems = useCallback(() => {
     const items = [];
 
-    // ===== STATUS SAYA - SELALU TAMPIL DENGAN TOMBOL + =====
+    // ===== STATUS SAYA =====
     const hasMyStatus = myStatuses.length > 0;
     const myLatest = hasMyStatus ? myStatuses[0] : null;
     
@@ -725,7 +745,7 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
       </div>
     );
 
-    // ===== 🔥 TOMBOL TAMBAH STATUS - SELALU TAMPIL (FIX) =====
+    // ===== TOMBOL TAMBAH STATUS =====
     items.push(
       <div 
         key="add-status"
@@ -781,6 +801,18 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
           {statuses.length > 1 && (
             <div className="status-count">+{statuses.length - 1}</div>
           )}
+        </div>
+      );
+    }
+
+    // Jika tidak ada status teman
+    if (Object.keys(groupedFriends).length === 0 && !hasMyStatus) {
+      items.push(
+        <div key="empty-status" className="status-item empty-status">
+          <div className="status-empty-text">
+            <span>📭</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Belum ada status</span>
+          </div>
         </div>
       );
     }
@@ -887,17 +919,20 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
                 >
                   🗑️ Hapus
                 </button>
-                <button 
-                  className="status-action-btn"
-                  onClick={() => showViewers(currentStatusOwnerId, currentStatus.id)}
-                >
-                  👁️ {viewerCount > 0 && `(${viewerCount})`} Lihat Viewer
-                </button>
+                {/* Tombol Viewer HANYA untuk status sendiri */}
+                {showViewers && (
+                  <button 
+                    className="status-action-btn"
+                    onClick={() => showViewersList(currentStatusOwnerId, currentStatus.id)}
+                  >
+                    👁️ {viewerCount > 0 ? `(${viewerCount})` : ''} Lihat Viewer
+                  </button>
+                )}
                 <button 
                   className="status-action-btn"
                   onClick={() => showReplies(currentStatus.id)}
                 >
-                  💬 Lihat Balasan ({replies.length})
+                  💬 Balasan ({replies.length})
                 </button>
               </>
             ) : (
@@ -911,19 +946,14 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
                 >
                   💬 Balas
                 </button>
-                <button 
-                  className="status-action-btn"
-                  onClick={() => showViewers(currentStatusOwnerId, currentStatus.id)}
-                >
-                  👁️ {viewerCount > 0 && `(${viewerCount})`} Lihat Viewer
-                </button>
+                {/* Tombol Viewer TIDAK ditampilkan untuk status orang lain */}
               </>
             )}
           </div>
         </div>
       </div>
     );
-  }, [showViewerModal, currentStatusList, currentStatusIndex, currentStatusOwnerId, user, nextStatus, prevStatus, deleteCurrentStatus, showViewers, showReplies, replies.length, modalKey]);
+  }, [showViewerModal, currentStatusList, currentStatusIndex, currentStatusOwnerId, user, nextStatus, prevStatus, deleteCurrentStatus, showViewersList, showReplies, replies.length, modalKey, showViewers]);
 
   // ==================== RENDER ====================
   return (
@@ -1088,7 +1118,8 @@ const StatusManager = ({ user, onStatusUpdate, activeTab }) => {
                       <div className="viewer-name">{v.nama}</div>
                       <div className="viewer-role">
                         {v.role === 'siswa' ? '👨‍🎓 Siswa' : 
-                         v.role === 'guru' ? '👨‍🏫 Guru' : '👑 Admin'}
+                         v.role === 'guru' ? '👨‍🏫 Guru' : 
+                         v.role === 'admin' ? '👑 Admin' : '👤 User'}
                       </div>
                     </div>
                   </div>
