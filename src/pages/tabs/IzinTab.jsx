@@ -1,6 +1,6 @@
 // src/pages/tabs/IzinTab.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ref, onValue, push, update, remove, serverTimestamp } from 'firebase/database';
+import { ref, onValue, push, update, remove, serverTimestamp, get, set } from 'firebase/database';
 import { db } from '../../firebase/config';
 import './IzinTab.css';
 
@@ -31,7 +31,7 @@ const formatDate = (timestamp) => {
 const escapeHtml = (str) => {
   if (!str) return '';
   return str.replace(/[&<>]/g, m => 
-    m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'
+    m === '&' ? '&amp;' : m === '<' ? '&lt;' : m === '>' ? '&gt;' : m
   );
 };
 
@@ -140,6 +140,91 @@ const isSiswaRole = (role) => {
   return role === 'siswa';
 };
 
+// ==================== INSERT ATTENDANCE FROM IZIN ====================
+const insertAttendanceFromIzin = async (izin, user) => {
+  try {
+    console.log('📝 Inserting attendance from izin:', izin);
+    
+    // Parse dates
+    const startDate = izin.startDate;
+    const endDate = izin.endDate;
+    
+    // Get student data
+    const studentId = izin.studentId;
+    const studentName = izin.studentName;
+    const kelas = izin.kelas || '-';
+    const jurusan = izin.jurusan || '-';
+    
+    // Generate all dates between start and end
+    const dates = [];
+    let currentDate = new Date(startDate);
+    const end = new Date(endDate);
+    
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      dates.push(dateStr);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    console.log(`📅 Inserting attendance for ${dates.length} days:`, dates);
+    
+    // Determine attendance status based on izin type
+    let attendanceStatus = 'Izin';
+    
+    if (izin.type === 'sakit') {
+      attendanceStatus = 'Sakit';
+    } else if (izin.type === 'keperluan') {
+      attendanceStatus = 'Izin';
+    }
+    
+    // Insert attendance for each date
+    let insertedCount = 0;
+    
+    for (const dateStr of dates) {
+      const dateAttendanceRef = ref(db, `absensi/${dateStr}/${studentId}`);
+      
+      // Check if attendance already exists
+      const snapshot = await get(dateAttendanceRef);
+      if (snapshot.exists()) {
+        console.log(`⚠️ Attendance already exists for ${studentName} on ${dateStr}, skipping...`);
+        continue;
+      }
+      
+      // Create attendance record
+      const attendanceRecord = {
+        in: '00:00',
+        out: null,
+        date: dateStr,
+        studentId: studentId,
+        nama: studentName,
+        kelas: kelas,
+        jurusan: jurusan,
+        isLate: false,
+        delayMinutes: 0,
+        status: attendanceStatus,
+        timestamp: Date.now(),
+        checkedInBy: 'Sistem (Izin)',
+        isSimulate: false,
+        isFromIzin: true,
+        izinId: izin.id,
+        izinType: izin.type,
+        approvedBy: izin.approvedBy || 'Sistem'
+      };
+      
+      await set(dateAttendanceRef, attendanceRecord);
+      insertedCount++;
+      console.log(`✅ Inserted attendance for ${studentName} on ${dateStr}`);
+    }
+    
+    console.log(`✅ Successfully inserted ${insertedCount} attendance records for ${studentName}`);
+    return { success: true, insertedCount, dates };
+    
+  } catch (error) {
+    console.error('❌ Failed to insert attendance from izin:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 const IzinTab = ({ user }) => {
   // ==================== STATE ====================
   const [izinList, setIzinList] = useState([]);
@@ -169,7 +254,7 @@ const IzinTab = ({ user }) => {
     setToast({ show: true, message, type });
     setTimeout(() => {
       setToast({ show: false, message: '', type: '' });
-    }, 3500);
+    }, 4000);
   };
 
   // ==================== PERMISSIONS ====================
@@ -178,11 +263,7 @@ const IzinTab = ({ user }) => {
   const isStaffUser = isStaff(userRole);
   const isSiswaUser = isSiswaRole(userRole);
   
-  // ⭐ PERMISSION LOGIC YANG DIPERBAIKI ⭐
-  
   // 1. Bisa approve/reject:
-  //    - Full Access (Admin/Developer): SEMUA izin
-  //    - Staff (Guru/Staff TU/Wakil): HANYA izin dari SISWA
   const canApprove = (izin) => {
     if (!izin) return false;
     const isStudentIzin = isSiswaRole(izin.submittedByRole) || izin.studentId === izin.submittedBy;
@@ -193,9 +274,6 @@ const IzinTab = ({ user }) => {
   };
   
   // 2. Bisa hapus:
-  //    - Full Access (Admin/Developer): SEMUA izin
-  //    - Staff (Guru/Staff TU/Wakil): HANYA izin dari SISWA
-  //    - Siswa: HANYA izin sendiri yang status pending
   const canDelete = (izin) => {
     if (!izin) return false;
     const isStudentIzin = isSiswaRole(izin.submittedByRole) || izin.studentId === izin.submittedBy;
@@ -209,8 +287,6 @@ const IzinTab = ({ user }) => {
   };
   
   // 3. Bisa melihat semua izin:
-  //    - Full Access & Staff: SEMUA izin
-  //    - Siswa: HANYA izin sendiri
   const canViewAll = () => {
     return isFullAccessUser || isStaffUser;
   };
@@ -235,12 +311,10 @@ const IzinTab = ({ user }) => {
       let filteredList = [...list];
       
       if (isSiswaUser) {
-        // Siswa hanya lihat izin sendiri
         filteredList = list.filter(izin => 
           izin.studentId == user.fpId || izin.studentId == user.uid || izin.submittedBy === user.uid
         );
       }
-      // Staff dan Full Access bisa lihat semua izin
       
       // Filter status
       if (filterStatus !== 'all') {
@@ -410,7 +484,6 @@ const IzinTab = ({ user }) => {
   const handleApproveIzin = async (izinId, studentName) => {
     const izin = izinList.find(i => i.id === izinId);
     
-    // ⭐ CEK PERMISSION APPROVE ⭐
     if (!canApprove(izin)) {
       if (isSiswaUser) {
         showToast('⛔ Hanya Guru/Staff TU/Admin/Developer yang dapat menyetujui izin!', 'error');
@@ -420,9 +493,10 @@ const IzinTab = ({ user }) => {
       return;
     }
 
-    if (!window.confirm(`Setujui izin untuk ${studentName}?`)) return;
+    if (!window.confirm(`Setujui izin untuk ${studentName}?\n\n📅 ${izin.startDate} - ${izin.endDate}\n📋 ${izin.type === 'sakit' ? '🤒 Sakit' : '📝 Keperluan'}\n\n✅ Izin akan otomatis masuk ke absensi.`)) return;
 
     try {
+      // 1. Update status izin
       await update(ref(db, `izin/${izinId}`), {
         status: 'approved',
         approvedBy: user.nama || user.email || 'System',
@@ -430,10 +504,26 @@ const IzinTab = ({ user }) => {
         updatedAt: serverTimestamp()
       });
 
-      showToast(`✅ Izin ${studentName} disetujui!`, 'success');
+      // 2. ⭐ INSERT ATTENDANCE FROM IZIN ⭐
+      const izinData = { ...izin, id: izinId, approvedBy: user.nama || user.email || 'System' };
+      const result = await insertAttendanceFromIzin(izinData, user);
+      
+      if (result.success) {
+        showToast(
+          `✅ Izin ${studentName} disetujui! ${result.insertedCount} data absensi berhasil ditambahkan.`, 
+          'success'
+        );
+      } else {
+        showToast(
+          `⚠️ Izin ${studentName} disetujui, tapi gagal menambahkan absensi: ${result.error}`, 
+          'warning'
+        );
+      }
 
       if (typeof window.logActivity === 'function') {
-        window.logActivity('approve_izin', `Menyetujui izin ${studentName}`);
+        window.logActivity('approve_izin', 
+          `Menyetujui izin ${studentName} (${izin.startDate} - ${izin.endDate}) - ${result.insertedCount || 0} absensi ditambahkan`
+        );
       }
 
     } catch (error) {
@@ -446,7 +536,6 @@ const IzinTab = ({ user }) => {
   const handleRejectIzin = async (izinId, studentName) => {
     const izin = izinList.find(i => i.id === izinId);
     
-    // ⭐ CEK PERMISSION REJECT ⭐
     if (!canApprove(izin)) {
       if (isSiswaUser) {
         showToast('⛔ Hanya Guru/Staff TU/Admin/Developer yang dapat menolak izin!', 'error');
@@ -488,7 +577,6 @@ const IzinTab = ({ user }) => {
   const handleDeleteIzin = async (izinId, studentName) => {
     const izin = izinList.find(i => i.id === izinId);
     
-    // ⭐ CEK PERMISSION DELETE ⭐
     if (!canDelete(izin)) {
       if (isSiswaUser) {
         showToast('⛔ Anda hanya dapat menghapus izin sendiri yang masih menunggu persetujuan!', 'error');
@@ -502,13 +590,13 @@ const IzinTab = ({ user }) => {
 
     let confirmMessage = `Hapus pengajuan izin untuk ${studentName}?`;
     if (izin && izin.status !== 'pending') {
-      confirmMessage = `Hapus pengajuan izin ${studentName} yang sudah ${izin.status === 'approved' ? 'DISETUJUI' : 'DITOLAK'}?\n\nData ini akan dihapus permanen!`;
+      confirmMessage = `Hapus pengajuan izin ${studentName} yang sudah ${izin.status === 'approved' ? 'DISETUJUI' : 'DITOLAK'}?\n\n⚠️ Data absensi yang sudah masuk TIDAK akan terpengaruh.\n📌 Hanya data izin dan lampiran yang akan dihapus.`;
     }
     
     if (!window.confirm(confirmMessage)) return;
 
     try {
-      // ⭐ 1. HAPUS FILE DI SUPABASE ⭐
+      // ⭐ 1. HAPUS FILE DI SUPABASE (jika ada) ⭐
       if (izin && izin.attachmentUrl && izin.attachmentUrl !== 'null') {
         const deleteResult = await deleteFileFromSupabase(izin.attachmentUrl);
         if (deleteResult.success) {
@@ -519,12 +607,13 @@ const IzinTab = ({ user }) => {
       }
 
       // ⭐ 2. HAPUS DATA IZIN DI FIREBASE ⭐
+      // 🔥 TIDAK MENGHAPUS ABSENSI - data absensi tetap ada
       await remove(ref(db, `izin/${izinId}`));
 
-      showToast(`🗑️ Izin ${studentName} berhasil dihapus!`, 'success');
+      showToast(`🗑️ Izin ${studentName} berhasil dihapus! Data absensi tetap terjaga.`, 'success');
 
       if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_izin', `Menghapus izin ${studentName} (${izin?.status || 'unknown'})`);
+        window.logActivity('delete_izin', `Menghapus izin ${studentName} (${izin?.status || 'unknown'}) - absensi tidak terpengaruh`);
       }
 
     } catch (error) {
@@ -594,7 +683,6 @@ const IzinTab = ({ user }) => {
       );
     }
 
-    // Default: link biasa
     return (
       <div className="izin-attachment-default">
         <a 
@@ -696,6 +784,32 @@ const IzinTab = ({ user }) => {
         </div>
       </div>
 
+      {/* ⭐ INFO BANNER - Auto Attendance ⭐ */}
+      <div className="auto-attendance-info" style={{
+        padding: '10px 16px',
+        background: 'rgba(0,188,212,0.08)',
+        borderRadius: '8px',
+        marginBottom: '16px',
+        border: '1px solid rgba(0,188,212,0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        fontSize: '13px',
+        color: 'var(--text-muted)'
+      }}>
+        <span style={{ fontSize: '20px' }}>🤖</span>
+        <span>
+          <strong style={{ color: '#00bcd4' }}>Auto-Absensi:</strong> 
+          {' '}Izin yang disetujui akan otomatis masuk ke data absensi siswa.
+          {isFullAccessUser && ' (Semua role)'}
+          {isStaffUser && ' (Hanya izin siswa)'}
+          {isSiswaUser && ' (Pengajuan Anda)'}
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#ff9800' }}>
+          📌 Hapus izin tidak mempengaruhi absensi
+        </span>
+      </div>
+
       {/* Izin List */}
       <div className="izin-list">
         {izinList.length === 0 ? (
@@ -730,12 +844,10 @@ const IzinTab = ({ user }) => {
               
               const isStudentIzin = isSiswaRole(izin.submittedByRole) || izin.studentId === izin.submittedBy;
               
-              // ⭐ Tentukan tombol aksi berdasarkan permission ⭐
-              let actionButtons = null;
-              
-              // Cek permission approve/reject
               const canApproveThis = canApprove(izin);
               const canDeleteThis = canDelete(izin);
+              
+              let actionButtons = null;
               
               if (canApproveThis && isPending) {
                 actionButtons = (
@@ -743,7 +855,7 @@ const IzinTab = ({ user }) => {
                     <button 
                       className="btn-approve"
                       onClick={() => handleApproveIzin(izin.id, izin.studentName)}
-                      title="Setujui izin ini"
+                      title="Setujui izin ini (otomatis masuk absensi)"
                     >
                       ✅ Setujui
                     </button>
@@ -758,7 +870,7 @@ const IzinTab = ({ user }) => {
                       <button 
                         className="btn-delete"
                         onClick={() => handleDeleteIzin(izin.id, izin.studentName)}
-                        title="Hapus izin ini"
+                        title="Hapus izin ini (absensi tetap ada)"
                       >
                         🗑️ Hapus
                       </button>
@@ -771,7 +883,7 @@ const IzinTab = ({ user }) => {
                     <button 
                       className="btn-delete"
                       onClick={() => handleDeleteIzin(izin.id, izin.studentName)}
-                      title="Hapus izin ini"
+                      title="Hapus izin ini (absensi tetap ada)"
                     >
                       🗑️ Hapus
                     </button>
@@ -790,6 +902,9 @@ const IzinTab = ({ user }) => {
                   </div>
                 );
               }
+
+              // ⭐ Show auto-attendance badge for approved izin ⭐
+              const showAutoBadge = isApproved && izin.status === 'approved';
 
               return (
                 <div 
@@ -812,7 +927,6 @@ const IzinTab = ({ user }) => {
                       <div className="student-class">
                         Kelas: {izin.kelas || '-'} | Jurusan: {izin.jurusan || '-'}
                       </div>
-                      {/* ⭐ Tampilkan role pengaju */}
                       <div className="student-role" style={{ 
                         fontSize: '11px', 
                         color: 'var(--text-muted)',
@@ -839,7 +953,6 @@ const IzinTab = ({ user }) => {
                       {escapeHtml(izin.reason)}
                     </div>
 
-                    {/* ⭐ RENDER ATTACHMENT - FOTO LANGSUNG DITAMPILKAN ⭐ */}
                     {izin.attachmentUrl && izin.attachmentUrl !== 'null' && (
                       <div className="izin-attachment-wrapper">
                         {renderAttachment(izin.attachmentUrl)}
@@ -849,6 +962,30 @@ const IzinTab = ({ user }) => {
                     {isRejected && (izin.rejectReason || izin.reason) && (
                       <div className="izin-reject-reason">
                         <strong>Alasan Ditolak:</strong> {escapeHtml(izin.rejectReason || izin.reason)}
+                      </div>
+                    )}
+
+                    {/* ⭐ AUTO ATTENDANCE BADGE ⭐ */}
+                    {showAutoBadge && (
+                      <div className="auto-attendance-badge" style={{
+                        marginTop: '8px',
+                        padding: '6px 12px',
+                        background: 'rgba(76,175,80,0.12)',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        color: '#4caf50',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        border: '1px solid rgba(76,175,80,0.2)'
+                      }}>
+                        <span>🤖</span>
+                        <span>
+                          ✅ Absensi otomatis terisi untuk {formatIndonesianDate(izin.startDate)} - {formatIndonesianDate(izin.endDate)}
+                        </span>
+                        <span style={{ fontSize: '10px', opacity: 0.7, marginLeft: 'auto' }}>
+                          Status: {izin.type === 'sakit' ? 'Sakit' : 'Izin'}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -865,6 +1002,11 @@ const IzinTab = ({ user }) => {
                                 izin.submittedByRole === 'admin' ? 'Kepala Sekolah' :
                                 izin.submittedByRole === 'developer' ? 'Developer' :
                                 izin.submittedByRole || 'Siswa'}
+                        </span>
+                      )}
+                      {isApproved && izin.approvedBy && (
+                        <span style={{ marginLeft: '8px', fontSize: '10px', color: '#4caf50' }}>
+                          ✅ Disetujui oleh: {izin.approvedBy}
                         </span>
                       )}
                     </div>
@@ -965,6 +1107,24 @@ const IzinTab = ({ user }) => {
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* ⭐ AUTO ATTENDANCE INFO ⭐ */}
+                <div className="auto-attendance-form-info" style={{
+                  padding: '10px 12px',
+                  background: 'rgba(0,188,212,0.06)',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  color: 'var(--text-muted)',
+                  marginTop: '8px'
+                }}>
+                  <span>🤖 <strong style={{ color: '#00bcd4' }}>Info:</strong></span>
+                  <span style={{ marginLeft: '4px' }}>
+                    Jika izin disetujui, data absensi akan otomatis terisi untuk seluruh tanggal yang diajukan.
+                  </span>
+                  <span style={{ marginLeft: '8px', fontSize: '11px', color: '#ff9800' }}>
+                    📌 Menghapus izin tidak akan menghapus data absensi.
+                  </span>
                 </div>
               </div>
 
