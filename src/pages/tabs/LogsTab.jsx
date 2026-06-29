@@ -1,6 +1,6 @@
 // src/pages/tabs/LogsTab.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ref, onValue, off, get, remove, query, orderByChild, limitToLast, update } from 'firebase/database';
+import { ref, onValue, off, get, remove } from 'firebase/database';
 import { db } from '../../firebase/config';
 import { logActivity } from '../../utils/logger';
 import './LogsTab.css';
@@ -20,7 +20,6 @@ const LogsTab = ({ user }) => {
   const [filterAction, setFilterAction] = useState('all');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
-  const [showDeveloperLogs, setShowDeveloperLogs] = useState(false);
   
   // Refs
   const logsListenerRef = useRef(null);
@@ -40,7 +39,6 @@ const LogsTab = ({ user }) => {
   
   const hasAccess = isDeveloper || isAdmin || isWakilKepala || isGuru || isStaff;
   const canDelete = isDeveloper || isAdmin;
-  const canSeeDeveloperLogs = isDeveloper || isAdmin;
 
   // ==================== GET ROLE HELPERS ====================
   const getRoleDisplayName = useCallback((role) => {
@@ -67,7 +65,7 @@ const LogsTab = ({ user }) => {
     return icons[role] || '👤';
   }, []);
 
-  // ==================== FILTER SENSITIVE ACTIONS (DEFINED EARLY) ====================
+  // ==================== FILTER SENSITIVE ACTIONS ====================
   const filterSensitiveActions = useCallback((logsData) => {
     if (role === 'staff_tu') {
       const sensitiveActions = ['delete_user', 'reset_system', 'update_user_role', 'delete_announcement', 'delete_log', 'delete_all_logs', 'auto_delete_old_logs'];
@@ -244,11 +242,9 @@ const LogsTab = ({ user }) => {
       const deletePromises = [];
       
       Object.entries(data).forEach(([id, log]) => {
-        // Hitung usia log
         const logTimestamp = log.timestamp || log.createdAt || 0;
         const age = now - logTimestamp;
         
-        // Hapus jika lebih dari 1 minggu
         if (age >= AUTO_DELETE_INTERVAL) {
           deletePromises.push(remove(ref(db, `logs/${id}`)));
           deletedCount++;
@@ -259,7 +255,6 @@ const LogsTab = ({ user }) => {
         await Promise.all(deletePromises);
         console.log(`✅ Berhasil menghapus ${deletedCount} log lama (usia > 1 minggu)`);
         
-        // Log aktivitas auto-delete
         try {
           await logActivity('auto_delete_old_logs', 
             `Auto-delete: Menghapus ${deletedCount} log yang berusia lebih dari 1 minggu - ${getRoleDisplayName(role)}`,
@@ -315,23 +310,16 @@ const LogsTab = ({ user }) => {
       // Sort by timestamp (newest first)
       logsList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       
-      // Filter berdasarkan role
-      let filtered = [...logsList];
+      // ============================================================
+      // ⭐ SEMBUNYIKAN SEMUA LOG DEVELOPER ⭐
+      // ============================================================
+      let filtered = logsList.filter(log => log.userRole !== 'developer');
       
+      // Filter berdasarkan role
       if (role === 'siswa') {
         filtered = filtered.filter(log => log.userId === user.uid);
       } else if (role === 'staff_tu') {
         filtered = filterSensitiveActions(filtered);
-      }
-      
-      // Jika bukan developer atau admin, sembunyikan log developer
-      if (!canSeeDeveloperLogs) {
-        filtered = filtered.filter(log => log.userRole !== 'developer');
-      }
-      
-      // Jika showDeveloperLogs false, sembunyikan log developer
-      if (!showDeveloperLogs && canSeeDeveloperLogs) {
-        filtered = filtered.filter(log => log.userRole !== 'developer');
       }
       
       setLogs(logsList);
@@ -365,19 +353,17 @@ const LogsTab = ({ user }) => {
         logsListenerRef.current = null;
       }
     };
-  }, [hasAccess, user?.uid, role, canSeeDeveloperLogs, showDeveloperLogs, filterSensitiveActions]);
+  }, [hasAccess, user?.uid, role, filterSensitiveActions]);
 
   // ==================== AUTO DELETE SCHEDULE ====================
   useEffect(() => {
     if (!canDelete) return;
     
-    // Jalankan auto-delete saat pertama kali komponen dimuat
     autoDeleteOldLogs();
     
-    // Jalankan auto-delete setiap 1 jam untuk memastikan log terhapus tepat waktu
     const intervalId = setInterval(() => {
       autoDeleteOldLogs();
-    }, 60 * 60 * 1000); // 1 jam
+    }, 60 * 60 * 1000);
     
     return () => {
       clearInterval(intervalId);
@@ -386,7 +372,10 @@ const LogsTab = ({ user }) => {
 
   // ==================== APPLY FILTERS ====================
   useEffect(() => {
-    let filtered = [...logs];
+    // ============================================================
+    // ⭐ SEMBUNYIKAN SEMUA LOG DEVELOPER ⭐
+    // ============================================================
+    let filtered = logs.filter(log => log.userRole !== 'developer');
     
     // Filter by action
     if (filterAction !== 'all') {
@@ -398,16 +387,6 @@ const LogsTab = ({ user }) => {
       filtered = filtered.filter(log => log.userId === user.uid);
     } else if (role === 'staff_tu') {
       filtered = filterSensitiveActions(filtered);
-    }
-    
-    // Sembunyikan log developer kecuali jika diizinkan
-    if (!canSeeDeveloperLogs) {
-      filtered = filtered.filter(log => log.userRole !== 'developer');
-    }
-    
-    // Toggle show developer logs
-    if (!showDeveloperLogs && canSeeDeveloperLogs) {
-      filtered = filtered.filter(log => log.userRole !== 'developer');
     }
     
     // Filter by date range
@@ -425,11 +404,10 @@ const LogsTab = ({ user }) => {
     
     setFilteredLogs(filtered);
     
-    // Calculate total pages
     const total = Math.ceil(filtered.length / logsPerPage);
     setTotalPages(total > 0 ? total : 1);
     setCurrentPage(1);
-  }, [logs, filterAction, filterStartDate, filterEndDate, role, user?.uid, filterSensitiveActions, canSeeDeveloperLogs, showDeveloperLogs]);
+  }, [logs, filterAction, filterStartDate, filterEndDate, role, user?.uid, filterSensitiveActions]);
 
   // ==================== GET PAGINATED LOGS ====================
   const getPaginatedLogs = useCallback(() => {
@@ -473,7 +451,6 @@ const LogsTab = ({ user }) => {
     try {
       await remove(ref(db, `logs/${logId}`));
       
-      // ✅ LOGGING LANGSUNG dengan try-catch
       try {
         const roleDisplay = getRoleDisplayName(role);
         await logActivity('delete_log', 
@@ -484,7 +461,6 @@ const LogsTab = ({ user }) => {
         console.warn('⚠️ Logging failed for delete_log:', logErr);
       }
       
-      // Remove from local state
       setLogs(prev => prev.filter(log => log.id !== logId));
       setFilteredLogs(prev => prev.filter(log => log.id !== logId));
       
@@ -531,12 +507,10 @@ const LogsTab = ({ user }) => {
     setIsDeleting(true);
     
     try {
-      // Delete all filtered logs
       for (const log of filteredLogs) {
         await remove(ref(db, `logs/${log.id}`));
       }
       
-      // ✅ LOGGING LANGSUNG dengan try-catch
       try {
         await logActivity('delete_all_logs', 
           `Menghapus semua log (${totalLogs} log) - ${roleDisplay}`,
@@ -680,18 +654,6 @@ const LogsTab = ({ user }) => {
               title="Sampai tanggal"
             />
           </div>
-
-          {/* Toggle Show Developer Logs */}
-          {canSeeDeveloperLogs && (
-            <label className="toggle-dev-logs">
-              <input
-                type="checkbox"
-                checked={showDeveloperLogs}
-                onChange={(e) => setShowDeveloperLogs(e.target.checked)}
-              />
-              <span className="toggle-label">👨‍💻 Tampilkan Log Developer</span>
-            </label>
-          )}
         </div>
         
         <div className="filter-info">
@@ -701,12 +663,13 @@ const LogsTab = ({ user }) => {
             {(filterStartDate || filterEndDate) && (
               <span> • Tanggal: {filterStartDate || '...'} — {filterEndDate || '...'}</span>
             )}
-            {!showDeveloperLogs && canSeeDeveloperLogs && (
-              <span> • 🔒 Log Developer disembunyikan</span>
-            )}
             {isAutoDeleting && (
               <span className="auto-delete-status"> • 🧹 Menghapus log lama...</span>
             )}
+            {/* ⭐ INDICATOR LOG DEVELOPER DISEMBUNYIKAN ⭐ */}
+            <span className="developer-hidden" style={{ color: '#9b59b6', marginLeft: '8px' }}>
+              • 🔒 Log Developer disembunyikan
+            </span>
           </span>
         </div>
       </div>
@@ -746,14 +709,14 @@ const LogsTab = ({ user }) => {
               </thead>
               <tbody>
                 {paginatedLogs.map((log) => {
-                  const isDeveloperLog = log.userRole === 'developer';
+                  // Log developer sudah tidak ada, tapi tetap kita handle jika ada
                   const rowClass = log.action === 'delete_user' || log.action === 'reset_system' ? 'log-critical' :
                                    log.action === 'login' || log.action === 'logout' ? 'log-auth' :
                                    log.action === 'auto_delete_old_logs' ? 'log-auto-delete' :
                                    log.action.includes('delete') ? 'log-delete' : '';
                   
                   return (
-                    <tr key={log.id} className={`${rowClass} ${isDeveloperLog ? 'log-developer' : ''}`}>
+                    <tr key={log.id} className={rowClass}>
                       <td>
                         <div className="log-date-time">
                           <span className="log-date">{new Date(log.timestamp).toLocaleDateString('id-ID')}</span>
@@ -763,12 +726,12 @@ const LogsTab = ({ user }) => {
                       <td>
                         <div className="log-user">
                           <span className="user-avatar" style={{
-                            background: isDeveloperLog ? '#9b59b6' : '#3498db'
+                            background: '#3498db'
                           }}>
                             {log.userName?.charAt(0) || 'U'}
                           </span>
                           <span className="user-name">{log.userName || log.userId || 'System'}</span>
-                          {isDeveloperLog && <span className="dev-badge">👨‍💻</span>}
+                          {/* Badge developer dihapus karena log developer tidak tampil */}
                         </div>
                       </td>
                       <td>
@@ -842,13 +805,12 @@ const LogsTab = ({ user }) => {
               • 🗑️ Dapat menghapus log
             </span>
           )}
-          {canSeeDeveloperLogs && (
-            <span className="footer-dev-toggle">
-              • {showDeveloperLogs ? '👨‍💻 Log Developer terlihat' : '🔒 Log Developer tersembunyi'}
-            </span>
-          )}
           <span className="footer-auto-delete" style={{ color: '#4CAF50' }}>
             • 🧹 Auto-delete: 1 minggu
+          </span>
+          {/* ⭐ INDICATOR LOG DEVELOPER DISEMBUNYIKAN ⭐ */}
+          <span className="footer-dev-hidden" style={{ color: '#9b59b6' }}>
+            • 🔒 Log Developer tidak ditampilkan
           </span>
         </p>
       </div>
