@@ -40,7 +40,7 @@
   transform: translateX(0);
 }
 
-/* ===== SIDEBAR HEADER ===== */
+/* ===== SIDEBAR HEADER - FIXED TOP ===== */
 .sidebar-header {
   padding: 16px 20px;
   display: flex;
@@ -106,7 +106,7 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ===== USER PROFILE ===== */
+/* ===== USER PROFILE - FIXED ===== */
 .sidebar-user {
   padding: 20px 20px 16px;
   display: flex;
@@ -196,7 +196,7 @@
   margin-top: 2px;
 }
 
-/* ===== DATE & TIME ===== */
+/* ===== DATE & TIME - FIXED ===== */
 .sidebar-datetime {
   padding: 12px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -219,31 +219,46 @@
   margin-top: 2px;
 }
 
-/* ===== NAVIGATION ===== */
-.sidebar-nav {
-  flex: 1;
+/* ========================================== */
+/* ===== SCROLLABLE CONTENT AREA ===== */
+/* ========================================== */
+.sidebar-scrollable {
+  flex: 1 1 auto;
   overflow-y: auto;
-  padding: 10px 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  overflow-x: hidden;
+  padding: 4px 0 0 0;
+  min-height: 0;
 }
 
-.sidebar-nav::-webkit-scrollbar {
+/* Custom Scrollbar */
+.sidebar-scrollable::-webkit-scrollbar {
   width: 4px;
 }
 
-.sidebar-nav::-webkit-scrollbar-track {
+.sidebar-scrollable::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.sidebar-nav::-webkit-scrollbar-thumb {
+.sidebar-scrollable::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
 
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
+.sidebar-scrollable::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+.sidebar-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* ===== NAVIGATION ===== */
+.sidebar-nav {
+  padding: 6px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .sidebar-btn {
@@ -262,6 +277,7 @@
   text-align: left;
   position: relative;
   font-family: inherit;
+  flex-shrink: 0;
 }
 
 .sidebar-btn:hover {
@@ -394,10 +410,6 @@
   color: var(--text-primary, #fff);
 }
 
-.social-summary-count:not(:empty):not(:has-text) {
-  color: #00bcd4;
-}
-
 .social-summary-count[data-count="0"] {
   color: rgba(255, 255, 255, 0.3);
 }
@@ -427,7 +439,7 @@
   }
 }
 
-/* ===== ROLE COLORS FOR SIDEBAR ===== */
+/* ===== ROLE COLORS ===== */
 .role-developer { color: #9b59b6; }
 .role-admin { color: #e74c3c; }
 .role-wakil { color: #3498db; }
@@ -435,14 +447,9 @@
 .role-guru { color: #f39c12; }
 .role-siswa { color: #e67e22; }
 
-.sidebar-btn.active .role-developer { color: #9b59b6; }
-.sidebar-btn.active .role-admin { color: #e74c3c; }
-.sidebar-btn.active .role-wakil { color: #3498db; }
-.sidebar-btn.active .role-staff-tu { color: #607d8b; }
-.sidebar-btn.active .role-guru { color: #f39c12; }
-.sidebar-btn.active .role-siswa { color: #e67e22; }
-
-/* ===== FOOTER ===== */
+/* ========================================== */
+/* ===== FOOTER - FIXED BOTTOM ===== */
+/* ========================================== */
 .sidebar-footer {
   padding: 14px 20px 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -451,6 +458,7 @@
   flex-direction: column;
   gap: 8px;
   background: rgba(0, 0, 0, 0.15);
+  /* HAPUS position: sticky dan z-index */
 }
 
 .sidebar-user-role-info {
@@ -480,6 +488,7 @@
   letter-spacing: 1px;
 }
 
+/* ===== TOMBOL LOGOUT ===== */
 .sidebar-logout {
   display: flex;
   align-items: center;
@@ -496,6 +505,7 @@
   font-family: inherit;
   width: 100%;
   font-weight: 500;
+  margin-top: 2px;
 }
 
 .sidebar-logout:hover {
@@ -515,7 +525,10 @@
   font-weight: 500;
 }
 
+/* ========================================== */
 /* ===== RESPONSIVE ===== */
+/* ========================================== */
+
 @media (min-width: 769px) {
   .sidebar {
     transform: translateX(0);
@@ -541,6 +554,7 @@
   .sidebar {
     width: 280px;
     box-shadow: 4px 0 40px rgba(0, 0, 0, 0.7);
+    position: fixed;
   }
   
   .sidebar-btn {
@@ -590,8 +604,12 @@
     padding: 14px 16px 12px;
   }
   
+  .sidebar-scrollable {
+    padding: 2px 0 0 0;
+  }
+  
   .sidebar-nav {
-    padding: 6px 6px;
+    padding: 4px 8px 2px;
   }
   
   .sidebar-btn {
@@ -654,20 +672,15 @@
     min-width: 18px;
     height: 18px;
   }
-}
-
-/* ===== SCROLLBAR CUSTOMIZATION ===== */
-.sidebar::-webkit-scrollbar {
-  width: 3px;
-}
-
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  
+  .sidebar-logout {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .logout-icon {
+    font-size: 16px;
+  }
 }
 
 /* ===== ANIMATION UTILITIES ===== */

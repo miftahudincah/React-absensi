@@ -77,22 +77,17 @@ const Sidebar = ({
 
   // ==================== IZIN ONLINE ACCESS ====================
   const hasIzinAccess = () => {
-    // Semua role bisa akses izin online
     return user?.role && user?.role !== '';
   };
 
   // ==================== AI ACCESS ====================
-  // ⭐ HANYA DEVELOPER DAN ADMIN (KEPALA SEKOLAH) YANG BISA AKSES AI ⭐
   const hasAIAccess = () => {
-    // Hanya Developer dan Admin (Kepala Sekolah) yang bisa akses AI
     const allowedRoles = ['developer', 'admin'];
     return allowedRoles.includes(user?.role);
   };
 
   // ==================== LOG AKTIVITAS ACCESS ====================
-  // ⭐ HANYA DEVELOPER DAN ADMIN (KEPALA SEKOLAH) YANG BISA AKSES LOG AKTIVITAS ⭐
   const hasLogAccess = () => {
-    // Hanya Developer dan Admin (Kepala Sekolah) yang bisa akses Log Aktivitas
     const allowedRoles = ['developer', 'admin'];
     return allowedRoles.includes(user?.role);
   };
@@ -102,7 +97,6 @@ const Sidebar = ({
     if (!user?.uid || !db) return;
 
     try {
-      // Get friend requests
       const requestsSnapshot = await get(ref(db, 'friendships/requests'));
       const requests = requestsSnapshot.val();
       if (requests) {
@@ -112,7 +106,6 @@ const Sidebar = ({
         setFriendRequests(pending.length);
       }
 
-      // Get unread messages
       const inboxSnapshot = await get(ref(db, `chats/${user.uid}/inbox`));
       const inbox = inboxSnapshot.val();
       if (inbox) {
@@ -123,7 +116,6 @@ const Sidebar = ({
         setUnreadMessages(total);
       }
 
-      // Get unviewed status
       const statusSnapshot = await get(ref(db, 'statuses'));
       const statuses = statusSnapshot.val();
       if (statuses) {
@@ -134,7 +126,6 @@ const Sidebar = ({
         for (const [userId, userStatuses] of Object.entries(statuses)) {
           if (userId === user.uid) continue;
           
-          // Check if friend
           const friendCheck = await get(ref(db, `friendships/list/${user.uid}/${userId}`));
           if (!friendCheck.exists()) continue;
           
@@ -151,7 +142,6 @@ const Sidebar = ({
         setUnviewedStatus(unviewed);
       }
 
-      // Get izin pending count
       const izinSnapshot = await get(ref(db, 'izin'));
       const izinData = izinSnapshot.val();
       if (izinData) {
@@ -160,13 +150,11 @@ const Sidebar = ({
         const userUid = user?.uid;
         
         for (const [key, izin] of Object.entries(izinData)) {
-          // Jika siswa, hanya hitung izin miliknya yang pending
           if (userRole === 'siswa') {
             if (izin.siswaUid === userUid && izin.status === 'pending') {
               pending++;
             }
           } 
-          // Jika guru/staff/admin/developer, hitung semua izin yang pending (untuk approval)
           else if (['guru', 'staff_tu', 'wakil_kepala', 'admin', 'developer'].includes(userRole)) {
             if (izin.status === 'pending') {
               pending++;
@@ -176,7 +164,6 @@ const Sidebar = ({
         setIzinPendingCount(pending);
       }
 
-      // Get unread announcements
       await getUnreadAnnouncements();
 
     } catch (error) {
@@ -199,18 +186,15 @@ const Sidebar = ({
         const userRole = user?.role;
         
         for (const [key, announcement] of Object.entries(data)) {
-          // Cek apakah pengumuman masih aktif
           if (announcement.expiryDate) {
             const expiryDate = new Date(announcement.expiryDate).getTime();
             if (now > expiryDate) continue;
           }
           
-          // Cek apakah pengumuman sudah dibaca oleh user
           if (announcement.readBy && announcement.readBy[user.uid]) {
             continue;
           }
           
-          // Cek apakah pengumuman untuk role user
           if (announcement.targetRoles && announcement.targetRoles.length > 0) {
             if (!announcement.targetRoles.includes(userRole)) {
               continue;
@@ -256,14 +240,12 @@ const Sidebar = ({
     if (user?.uid && db) {
       getUnreadCounts();
 
-      // Listen for changes
       const requestsRef = ref(db, 'friendships/requests');
       const inboxRef = ref(db, `chats/${user.uid}/inbox`);
       const statusRef = ref(db, 'statuses');
       const izinRef = ref(db, 'izin');
       const announcementsRef = ref(db, 'announcements');
       
-      // Setup listeners
       const requestsUnsub = onValue(requestsRef, () => {
         getUnreadCounts();
       });
@@ -338,7 +320,6 @@ const Sidebar = ({
       showForAll: true,
       badge: unreadMessages
     },
-    // ==================== MENU PENGUMUMAN ====================
     { 
       id: 'announcements', 
       label: 'Pengumuman',
@@ -347,7 +328,6 @@ const Sidebar = ({
       showForAll: true,
       badge: unreadAnnouncements
     },
-    // ==================== MENU AI - HANYA DEVELOPER & ADMIN ====================
     { 
       id: 'ai', 
       label: 'AI Assistant',
@@ -355,7 +335,6 @@ const Sidebar = ({
       icon: '🤖',
       requireAI: true
     },
-    // ==================== MENU LOG AKTIVITAS - HANYA DEVELOPER & ADMIN ====================
     { 
       id: 'logs', 
       label: 'Log Aktivitas',
@@ -403,7 +382,6 @@ const Sidebar = ({
       icon: '📊',
       requireStaff: true
     },
-    // ==================== MENU IZIN ONLINE ====================
     { 
       id: 'izin', 
       label: 'Izin Online',
@@ -428,7 +406,7 @@ const Sidebar = ({
       {sidebarOpen && <div className="sidebar-overlay" onClick={onToggleSidebar}></div>}
       
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        {/* ===== HEADER ===== */}
+        {/* ===== HEADER - FIXED TOP ===== */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
             {schoolLogo ? (
@@ -443,7 +421,7 @@ const Sidebar = ({
           </button>
         </div>
         
-        {/* ===== USER PROFILE ===== */}
+        {/* ===== USER PROFILE - FIXED ===== */}
         <div className="sidebar-user">
           <div className="sidebar-avatar-wrapper">
             <div className="sidebar-avatar">
@@ -471,185 +449,192 @@ const Sidebar = ({
           </div>
         </div>
 
-        {/* ===== DATE & TIME ===== */}
-        <div className="sidebar-datetime">
-          <div className="sidebar-time">{currentTime}</div>
-          <div className="sidebar-date">{currentDate}</div>
-        </div>
-        
-        {/* ===== NAVIGATION ===== */}
-        <nav className="sidebar-nav">
-          {menuItems.map((item) => {
-            let shouldShow = true;
-
-            if (item.showForAll) {
-              shouldShow = true;
-            } else if (item.requireAdmin) {
-              shouldShow = user?.role === 'developer' || user?.role === 'admin';
-            } else if (item.requireStaff) {
-              const staffRoles = ['developer', 'admin', 'wakil_kepala', 'guru', 'staff_tu'];
-              shouldShow = staffRoles.includes(user?.role);
-            } else if (item.requireIzin) {
-              // ⭐ IZIN ONLINE - Semua role bisa akses ⭐
-              shouldShow = hasIzinAccess();
-            } else if (item.requireAI) {
-              // ⭐ AI - HANYA DEVELOPER DAN ADMIN ⭐
-              shouldShow = hasAIAccess();
-            } else if (item.requireLog) {
-              // ⭐ LOG AKTIVITAS - HANYA DEVELOPER DAN ADMIN ⭐
-              shouldShow = hasLogAccess();
-            } else if (isSiswa()) {
-              const studentMenus = ['dashboard', 'profile', 'status', 'friends', 'chat', 'announcements', 'attendance', 'students', 'rekap', 'izin'];
-              shouldShow = studentMenus.includes(item.id);
-            } else {
-              shouldShow = true;
-            }
-
-            if (!shouldShow) return null;
-            
-            const isActive = activeTab === item.id;
-            const badgeCount = item.id === 'friends' ? friendRequests : 
-                              item.id === 'chat' ? unreadMessages : 
-                              item.id === 'status' ? unviewedStatus :
-                              item.id === 'izin' ? izinPendingCount :
-                              item.id === 'announcements' ? unreadAnnouncements :
-                              item.badge || 0;
-            
-            return (
-              <button 
-                key={item.id}
-                className={`sidebar-btn ${isActive ? 'active' : ''} ${item.id === 'status' ? 'status-menu-item' : ''} ${item.id === 'izin' ? 'izin-menu-item' : ''} ${item.id === 'announcements' ? 'announcement-menu-item' : ''} ${item.id === 'ai' ? 'ai-menu-item' : ''} ${item.id === 'logs' ? 'logs-menu-item' : ''}`}
-                onClick={() => { 
-                  onTabChange(item.id); 
-                  if (window.innerWidth <= 768) {
-                    onToggleSidebar();
-                  }
-                }}
-                title={item.description}
-              >
-                <span className="sidebar-btn-icon">{item.icon || '📄'}</span>
-                <span className="sidebar-btn-label">{item.label}</span>
-                {badgeCount > 0 && (
-                  <span className="sidebar-badge">{badgeCount > 99 ? '99+' : badgeCount}</span>
-                )}
-                {isActive && <span className="sidebar-btn-indicator"></span>}
-                {item.id === 'status' && badgeCount > 0 && (
-                  <span className="status-pulse" style={{
-                    position: 'absolute',
-                    right: '8px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#ff6b6b',
-                    animation: 'pulse-dot 1.5s infinite'
-                  }}></span>
-                )}
-                {item.id === 'izin' && badgeCount > 0 && (
-                  <span className="izin-pulse" style={{
-                    position: 'absolute',
-                    right: '8px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#ff9800',
-                    animation: 'pulse-dot 1.5s infinite'
-                  }}></span>
-                )}
-                {item.id === 'announcements' && badgeCount > 0 && (
-                  <span className="announcement-pulse" style={{
-                    position: 'absolute',
-                    right: '8px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#00bcd4',
-                    animation: 'pulse-dot 1.5s infinite'
-                  }}></span>
-                )}
-                {item.id === 'ai' && (
-                  <span className="ai-sparkle" style={{
-                    position: 'absolute',
-                    right: '8px',
-                    fontSize: '12px',
-                    animation: 'sparkle 2s infinite'
-                  }}>✨</span>
-                )}
-                {item.id === 'logs' && (
-                  <span className="logs-indicator" style={{
-                    position: 'absolute',
-                    right: '8px',
-                    fontSize: '10px',
-                    color: '#ff9800'
-                  }}>●</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-        
-        {/* ===== SOCIAL SUMMARY ===== */}
-        <div className="sidebar-social-summary">
-          <div className={`social-summary-item ${friendRequests > 0 ? 'has-notification' : ''}`} title="Permintaan teman">
-            <span className="social-summary-icon">👥</span>
-            <span className="social-summary-count" data-count={friendRequests}>{friendRequests}</span>
-            <span className="social-summary-label">Teman</span>
-          </div>
-          <div className={`social-summary-item ${unreadMessages > 0 ? 'has-notification' : ''}`} title="Pesan belum dibaca">
-            <span className="social-summary-icon">💬</span>
-            <span className="social-summary-count" data-count={unreadMessages}>{unreadMessages}</span>
-            <span className="social-summary-label">Chat</span>
-          </div>
-          <div className={`social-summary-item ${unviewedStatus > 0 ? 'has-notification' : ''}`} title="Status belum dilihat">
-            <span className="social-summary-icon">📸</span>
-            <span className="social-summary-count" data-count={unviewedStatus}>{unviewedStatus}</span>
-            <span className="social-summary-label">Status</span>
-          </div>
-          {/* Pengumuman di Social Summary */}
-          <div className={`social-summary-item ${unreadAnnouncements > 0 ? 'has-notification has-announcement' : ''}`} 
-               title="Pengumuman belum dibaca" 
-               style={{ cursor: 'pointer' }} 
-               onClick={() => {
-                 onTabChange('announcements');
-                 if (window.innerWidth <= 768) onToggleSidebar();
-               }}
-          >
-            <span className="social-summary-icon">📢</span>
-            <span className="social-summary-count" data-count={unreadAnnouncements}>{unreadAnnouncements}</span>
-            <span className="social-summary-label">Info</span>
-          </div>
-          {/* Izin Online di Social Summary */}
-          <div className={`social-summary-item ${izinPendingCount > 0 ? 'has-notification' : ''}`} 
-               title="Izin pending" 
-               style={{ cursor: 'pointer' }} 
-               onClick={() => {
-                 onTabChange('izin');
-                 if (window.innerWidth <= 768) onToggleSidebar();
-               }}
-          >
-            <span className="social-summary-icon">📝</span>
-            <span className="social-summary-count" data-count={izinPendingCount}>{izinPendingCount}</span>
-            <span className="social-summary-label">Izin</span>
-          </div>
-        </div>
-        
-        {/* ===== FOOTER ===== */}
-        <div className="sidebar-footer">
-          <div className="sidebar-user-role-info">
-            <span className="role-info-label">Role:</span>
-            <span className={`role-info-value role-${user?.role}`}>
-              {getRoleIcon(user?.role)} {getRoleDisplayName(user?.role)}
-            </span>
+        {/* ===== DATE & TIME + LOGOUT ===== */}
+        <div className="sidebar-datetime-wrapper">
+          <div className="sidebar-datetime">
+            <div className="sidebar-time">{currentTime}</div>
+            <div className="sidebar-date">{currentDate}</div>
           </div>
           
-          <div className="sidebar-version">
-            <span>📱 v6.6</span>
-          </div>
-          
+          {/* ===== TOMBOL LOGOUT DI BAWAH JAM ===== */}
           <button className="sidebar-logout" onClick={onLogout}>
             <span className="logout-icon">🚪</span>
             <span className="logout-text">Logout</span>
           </button>
         </div>
+        
+        {/* ============================================================ */}
+        {/* ===== SCROLLABLE CONTENT AREA ===== */}
+        {/* ============================================================ */}
+        <div className="sidebar-scrollable">
+          
+          {/* ===== NAVIGATION ===== */}
+          <nav className="sidebar-nav">
+            {menuItems.map((item) => {
+              let shouldShow = true;
+
+              if (item.showForAll) {
+                shouldShow = true;
+              } else if (item.requireAdmin) {
+                shouldShow = user?.role === 'developer' || user?.role === 'admin';
+              } else if (item.requireStaff) {
+                const staffRoles = ['developer', 'admin', 'wakil_kepala', 'guru', 'staff_tu'];
+                shouldShow = staffRoles.includes(user?.role);
+              } else if (item.requireIzin) {
+                shouldShow = hasIzinAccess();
+              } else if (item.requireAI) {
+                shouldShow = hasAIAccess();
+              } else if (item.requireLog) {
+                shouldShow = hasLogAccess();
+              } else if (isSiswa()) {
+                const studentMenus = ['dashboard', 'profile', 'status', 'friends', 'chat', 'announcements', 'attendance', 'students', 'rekap', 'izin'];
+                shouldShow = studentMenus.includes(item.id);
+              } else {
+                shouldShow = true;
+              }
+
+              if (!shouldShow) return null;
+              
+              const isActive = activeTab === item.id;
+              const badgeCount = item.id === 'friends' ? friendRequests : 
+                                item.id === 'chat' ? unreadMessages : 
+                                item.id === 'status' ? unviewedStatus :
+                                item.id === 'izin' ? izinPendingCount :
+                                item.id === 'announcements' ? unreadAnnouncements :
+                                item.badge || 0;
+              
+              return (
+                <button 
+                  key={item.id}
+                  className={`sidebar-btn ${isActive ? 'active' : ''} ${item.id === 'status' ? 'status-menu-item' : ''} ${item.id === 'izin' ? 'izin-menu-item' : ''} ${item.id === 'announcements' ? 'announcement-menu-item' : ''} ${item.id === 'ai' ? 'ai-menu-item' : ''} ${item.id === 'logs' ? 'logs-menu-item' : ''}`}
+                  onClick={() => { 
+                    onTabChange(item.id); 
+                    if (window.innerWidth <= 768) {
+                      onToggleSidebar();
+                    }
+                  }}
+                  title={item.description}
+                >
+                  <span className="sidebar-btn-icon">{item.icon || '📄'}</span>
+                  <span className="sidebar-btn-label">{item.label}</span>
+                  {badgeCount > 0 && (
+                    <span className="sidebar-badge">{badgeCount > 99 ? '99+' : badgeCount}</span>
+                  )}
+                  {isActive && <span className="sidebar-btn-indicator"></span>}
+                  {item.id === 'status' && badgeCount > 0 && (
+                    <span className="status-pulse" style={{
+                      position: 'absolute',
+                      right: '8px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#ff6b6b',
+                      animation: 'pulse-dot 1.5s infinite'
+                    }}></span>
+                  )}
+                  {item.id === 'izin' && badgeCount > 0 && (
+                    <span className="izin-pulse" style={{
+                      position: 'absolute',
+                      right: '8px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#ff9800',
+                      animation: 'pulse-dot 1.5s infinite'
+                    }}></span>
+                  )}
+                  {item.id === 'announcements' && badgeCount > 0 && (
+                    <span className="announcement-pulse" style={{
+                      position: 'absolute',
+                      right: '8px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#00bcd4',
+                      animation: 'pulse-dot 1.5s infinite'
+                    }}></span>
+                  )}
+                  {item.id === 'ai' && (
+                    <span className="ai-sparkle" style={{
+                      position: 'absolute',
+                      right: '8px',
+                      fontSize: '12px',
+                      animation: 'sparkle 2s infinite'
+                    }}>✨</span>
+                  )}
+                  {item.id === 'logs' && (
+                    <span className="logs-indicator" style={{
+                      position: 'absolute',
+                      right: '8px',
+                      fontSize: '10px',
+                      color: '#ff9800'
+                    }}>●</span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+          
+          {/* ===== SOCIAL SUMMARY ===== */}
+          <div className="sidebar-social-summary">
+            <div className={`social-summary-item ${friendRequests > 0 ? 'has-notification' : ''}`} title="Permintaan teman">
+              <span className="social-summary-icon">👥</span>
+              <span className="social-summary-count" data-count={friendRequests}>{friendRequests}</span>
+              <span className="social-summary-label">Teman</span>
+            </div>
+            <div className={`social-summary-item ${unreadMessages > 0 ? 'has-notification' : ''}`} title="Pesan belum dibaca">
+              <span className="social-summary-icon">💬</span>
+              <span className="social-summary-count" data-count={unreadMessages}>{unreadMessages}</span>
+              <span className="social-summary-label">Chat</span>
+            </div>
+            <div className={`social-summary-item ${unviewedStatus > 0 ? 'has-notification' : ''}`} title="Status belum dilihat">
+              <span className="social-summary-icon">📸</span>
+              <span className="social-summary-count" data-count={unviewedStatus}>{unviewedStatus}</span>
+              <span className="social-summary-label">Status</span>
+            </div>
+            <div className={`social-summary-item ${unreadAnnouncements > 0 ? 'has-notification has-announcement' : ''}`} 
+                 title="Pengumuman belum dibaca" 
+                 style={{ cursor: 'pointer' }} 
+                 onClick={() => {
+                   onTabChange('announcements');
+                   if (window.innerWidth <= 768) onToggleSidebar();
+                 }}
+            >
+              <span className="social-summary-icon">📢</span>
+              <span className="social-summary-count" data-count={unreadAnnouncements}>{unreadAnnouncements}</span>
+              <span className="social-summary-label">Info</span>
+            </div>
+            <div className={`social-summary-item ${izinPendingCount > 0 ? 'has-notification' : ''}`} 
+                 title="Izin pending" 
+                 style={{ cursor: 'pointer' }} 
+                 onClick={() => {
+                   onTabChange('izin');
+                   if (window.innerWidth <= 768) onToggleSidebar();
+                 }}
+            >
+              <span className="social-summary-icon">📝</span>
+              <span className="social-summary-count" data-count={izinPendingCount}>{izinPendingCount}</span>
+              <span className="social-summary-label">Izin</span>
+            </div>
+          </div>
+          
+          {/* ===== FOOTER INFO ===== */}
+          <div className="sidebar-footer-info">
+            <div className="sidebar-user-role-info">
+              <span className="role-info-label">Role:</span>
+              <span className={`role-info-value role-${user?.role}`}>
+                {getRoleIcon(user?.role)} {getRoleDisplayName(user?.role)}
+              </span>
+            </div>
+            <div className="sidebar-version">
+              <span>📱 v6.6</span>
+            </div>
+          </div>
+          
+        </div>
+        {/* ===== END SCROLLABLE CONTENT AREA ===== */}
+        {/* ============================================================ */}
+        
       </aside>
     </>
   );
