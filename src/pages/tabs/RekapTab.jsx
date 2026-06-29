@@ -41,8 +41,14 @@ const RekapTab = ({ user }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [photoCache, setPhotoCache] = useState({});
 
-  const isSiswa = user?.role === 'siswa';
-  const canExport = !isSiswa;
+  // Cek role
+  const rawRole = user?.role || 'siswa';
+  const role = rawRole.toString().toLowerCase().trim();
+  const isSiswa = role === 'siswa';
+  const isDeveloper = role === 'developer';
+  const isFullAccess = ['developer', 'admin', 'wakil_kepala'].includes(role);
+  const isStaff = ['guru', 'staff_tu'].includes(role);
+  const canExport = isFullAccess || isStaff || isDeveloper;
 
   // ==================== FUNGSI FOTO PROFIL ====================
   const getStudentPhoto = useCallback((studentId, studentName) => {
@@ -55,16 +61,13 @@ const RekapTab = ({ user }) => {
       return photoCache[studentId];
     }
     
-    // Cari di users_auth berdasarkan fpId
     const userAuth = usersAuth.find(u => u.fpId == studentId);
     
     let photoUrl;
     if (userAuth && userAuth.photoUrl && userAuth.photoUrl !== 'null' && userAuth.photoUrl !== 'undefined') {
-      // Tambahkan timestamp untuk menghindari cache
       const separator = userAuth.photoUrl.includes('?') ? '&' : '?';
       photoUrl = userAuth.photoUrl + separator + 't=' + Date.now();
     } else {
-      // Fallback ke avatar inisial
       const initial = studentName ? studentName.charAt(0).toUpperCase() : 'U';
       photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=4caf50&color=fff&size=64&bold=true`;
     }
@@ -186,8 +189,6 @@ const RekapTab = ({ user }) => {
   useEffect(() => {
     let isMounted = true;
 
-    console.log('📊 RekapTab: Memulai load data...');
-
     // Ambil data siswa dari 'users'
     const usersRef = ref(db, 'users');
     const unsubscribeUsers = onValue(usersRef, (snapshot) => {
@@ -207,7 +208,6 @@ const RekapTab = ({ user }) => {
           }
         });
       }
-      console.log(`✅ RekapTab: ${usersList.length} siswa dimuat`);
       setStudents(usersList);
       
       const kelasSet = new Set();
@@ -233,9 +233,7 @@ const RekapTab = ({ user }) => {
         });
       }
       setUsersAuth(authList);
-      // Clear photo cache when users_auth changes
       setPhotoCache({});
-      console.log(`✅ RekapTab: ${authList.length} users_auth dimuat`);
     });
 
     // Ambil data absensi dari 'absensi'
@@ -246,8 +244,6 @@ const RekapTab = ({ user }) => {
       const attendanceList = [];
       
       if (data) {
-        console.log('📊 RekapTab: Data absensi mentah:', Object.keys(data).length, 'tanggal');
-        
         Object.keys(data).forEach(date => {
           const dailyRecords = data[date];
           if (dailyRecords && typeof dailyRecords === 'object') {
@@ -282,7 +278,6 @@ const RekapTab = ({ user }) => {
       }
       
       attendanceList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      console.log(`✅ RekapTab: ${attendanceList.length} data absensi dimuat`);
       setAttendanceData(attendanceList);
       setLoading(false);
       setError(null);
@@ -297,17 +292,12 @@ const RekapTab = ({ user }) => {
       unsubscribeUsers();
       unsubscribeUsersAuth();
       unsubscribeAttendance();
-      console.log('🧹 RekapTab: Cleanup listeners');
     };
   }, []);
 
   // ==================== HITUNG REKAP ====================
   const calculateRekap = useCallback(() => {
-    console.log('📊 RekapTab: Menghitung rekap...');
-    console.log(`📊 Attendance data: ${attendanceData.length}, Students: ${students.length}`);
-    
     if (attendanceData.length === 0 || students.length === 0) {
-      console.log('📊 RekapTab: Data belum lengkap, skip calculate');
       return;
     }
 
@@ -329,8 +319,6 @@ const RekapTab = ({ user }) => {
     if (filterJurusan !== 'all') {
       filteredStudents = filteredStudents.filter(s => s.jurusan === filterJurusan);
     }
-
-    console.log(`📊 Filtered students: ${filteredStudents.length}`);
 
     // Jika belum pernah absen (pertama kali)
     if (periodType === 'pertama') {
@@ -371,7 +359,6 @@ const RekapTab = ({ user }) => {
 
     // Untuk periode normal
     if (!startDate || !endDate) {
-      console.log('📊 RekapTab: Start atau end date tidak valid');
       setRekapData([]);
       return;
     }
@@ -393,7 +380,6 @@ const RekapTab = ({ user }) => {
     }
 
     const totalHariSekolah = allDates.length;
-    console.log(`📊 Total hari sekolah: ${totalHariSekolah}`);
 
     const rekapList = filteredStudents.map(s => {
       const absenSiswa = attendanceData.filter(a => 
@@ -406,6 +392,31 @@ const RekapTab = ({ user }) => {
       const alphaCount = totalHariSekolah - hadirCount;
       const persentase = totalHariSekolah > 0 ? Math.round((hadirCount / totalHariSekolah) * 100) : 0;
 
+      // Buat daftar detail absensi dengan semua tanggal
+      const details = allDates.map(date => {
+        const absen = absenSiswa.find(a => a.date === date);
+        if (absen) {
+          return {
+            date: date,
+            dayName: formatDayName(date),
+            status: absen.status === 'Hadir' || absen.status === 'Pulang' ? 'hadir' : 'alpha',
+            statusText: absen.status,
+            statusIcon: absen.status === 'Hadir' || absen.status === 'Pulang' ? '✅' : '❌',
+            timeIn: absen.timeIn || '-',
+            timeOut: absen.timeOut || '-'
+          };
+        }
+        return {
+          date: date,
+          dayName: formatDayName(date),
+          status: 'alpha',
+          statusText: 'Tidak Hadir',
+          statusIcon: '❌',
+          timeIn: '-',
+          timeOut: '-'
+        };
+      });
+
       return {
         ...s,
         totalHari: totalHariSekolah,
@@ -415,19 +426,10 @@ const RekapTab = ({ user }) => {
         alphaCount: alphaCount > 0 ? alphaCount : 0,
         persentaseKehadiran: persentase,
         photoUrl: getStudentPhoto(s.id, s.nama),
-        details: absenSiswa.map(a => ({
-          date: a.date,
-          dayName: formatDayName(a.date),
-          status: a.status === 'Hadir' || a.status === 'Pulang' ? 'hadir' : 'alpha',
-          statusText: a.status,
-          statusIcon: a.status === 'Hadir' || a.status === 'Pulang' ? '✅' : '❌',
-          timeIn: a.timeIn || '-',
-          timeOut: a.timeOut || '-'
-        }))
+        details: details
       };
     });
 
-    console.log(`📊 RekapList: ${rekapList.length} siswa`);
     setRekapData(rekapList);
     calculateStats(rekapList);
 
@@ -461,7 +463,6 @@ const RekapTab = ({ user }) => {
 
   // ==================== EFFECT UNTUK MENGHITUNG ULANG ====================
   useEffect(() => {
-    console.log('📊 RekapTab: Trigger calculateRekap');
     calculateRekap();
   }, [attendanceData, students, filterKelas, filterJurusan, periodType, customStart, customEnd, calculateRekap]);
 
@@ -562,14 +563,130 @@ const RekapTab = ({ user }) => {
       const timeNow = new Date().toLocaleTimeString('id-ID');
       const roleName = user?.nama || user?.email || 'Admin';
       
-      const printWindow = window.open('', '_blank', 'width=1100,height=800');
+      const printWindow = window.open('', '_blank', 'width=1200,height=900');
       if (!printWindow) {
         alert('Mohon izinkan popup untuk mengekspor PDF!');
         setExportLoading(false);
         return;
       }
       
-      printWindow.document.write(`...`);
+      // Generate HTML untuk PDF
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Rekap Absensi Siswa - ${schoolName}</title>
+          <meta charset="UTF-8">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; background: white; }
+            .header { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #4caf50; }
+            .header h1 { color: #4caf50; font-size: 28px; }
+            .header p { color: #666; font-size: 14px; margin-top: 5px; }
+            .info { margin-bottom: 20px; padding: 15px 20px; background: #f5f5f5; border-radius: 8px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 20px; }
+            .info .label { color: #888; }
+            .info .value { font-weight: 600; color: #333; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: center; }
+            th { background: #4caf50; color: white; font-weight: 600; }
+            tr:nth-child(even) { background: #f9f9f9; }
+            .text-success { color: #4caf50; font-weight: 600; }
+            .text-warning { color: #ff9800; font-weight: 600; }
+            .text-danger { color: #f44336; font-weight: 600; }
+            .footer { text-align: center; margin-top: 20px; padding-top: 10px; font-size: 10px; color: #888; border-top: 1px solid #ddd; }
+            .footer .signature { margin-top: 30px; display: flex; justify-content: flex-end; gap: 60px; }
+            .footer .signature div { text-align: center; font-size: 12px; }
+            .footer .signature .line { width: 180px; border-top: 1px solid #333; margin-top: 30px; }
+            .photo-cell img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+            @media print { .no-print { display: none; } body { padding: 20px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📊 REKAPITULASI ABSENSI SISWA</h1>
+            <p>${schoolName}</p>
+          </div>
+          <div class="info">
+            <span><span class="label">📅 Periode:</span> <span class="value">${periodLabel}</span></span>
+            <span><span class="label">📚 Kelas:</span> <span class="value">${filterKelas === 'all' ? 'Semua' : filterKelas}</span></span>
+            <span><span class="label">🎓 Jurusan:</span> <span class="value">${filterJurusan === 'all' ? 'Semua' : filterJurusan}</span></span>
+            <span><span class="label">👥 Total Siswa:</span> <span class="value">${stats.totalSiswa}</span></span>
+            <span><span class="label">📊 Rata-rata Kehadiran:</span> <span class="value">${stats.persentase}%</span></span>
+            <span><span class="label">👤 Dicetak oleh:</span> <span class="value">${roleName}</span></span>
+            <span><span class="label">📅 Tanggal Cetak:</span> <span class="value">${dateNow} ${timeNow}</span></span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Foto</th>
+                <th>Nama</th>
+                <th>ID</th>
+                <th>Kelas</th>
+                <th>Total Hari</th>
+                <th>✅ Hadir</th>
+                <th>🤒 Sakit</th>
+                <th>📝 Izin</th>
+                <th>❌ Alpha</th>
+                <th>% Kehadiran</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      sortedRekap.forEach((item, index) => {
+        let persentaseColor = 'text-danger';
+        if (item.persentaseKehadiran >= 80) persentaseColor = 'text-success';
+        else if (item.persentaseKehadiran >= 50) persentaseColor = 'text-warning';
+        
+        const photoUrl = item.photoUrl || getStudentPhoto(item.id, item.nama);
+        
+        html += `
+          <tr>
+            <td>${index + 1}</td>
+            <td class="photo-cell"><img src="${photoUrl}" alt="${item.nama}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(item.nama ? item.nama.charAt(0).toUpperCase() : 'U')}&background=4caf50&color=fff&size=64&bold=true'" /></td>
+            <td>${item.nama || '-'}</td>
+            <td>${item.id || '-'}</td>
+            <td>${item.kelas || '-'}</td>
+            <td>${item.totalHari || 0}</td>
+            <td>${item.hadirCount || 0}</td>
+            <td>${item.sakitCount || 0}</td>
+            <td>${item.izinCount || 0}</td>
+            <td>${item.alphaCount || 0}</td>
+            <td class="${persentaseColor}">${item.persentaseKehadiran || 0}%</td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+          <div class="footer">
+            <p>* Laporan ini dihasilkan secara otomatis oleh Sistem Absensi IoT</p>
+            <div class="signature">
+              <div>
+                <div class="line"></div>
+                <p>Kepala Sekolah</p>
+              </div>
+              <div>
+                <div class="line"></div>
+                <p>Wakil Kepala Sekolah</p>
+              </div>
+              <div>
+                <div class="line"></div>
+                <p>Guru BK</p>
+              </div>
+            </div>
+          </div>
+          <div class="no-print" style="text-align:center; margin-top:20px;">
+            <button onclick="window.print()" style="padding:12px 28px; background:#4caf50; color:white; border:none; border-radius:8px; cursor:pointer; font-size:16px; margin-right:12px;">🖨️ Cetak / Simpan PDF</button>
+            <button onclick="window.close()" style="padding:12px 28px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer; font-size:16px;">✖ Tutup</button>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(html);
       printWindow.document.close();
       
       setTimeout(() => {
@@ -883,15 +1000,19 @@ const RekapTab = ({ user }) => {
           📌 Rekapitulasi absensi <strong>siswa</strong> dari database <code>absensi</code>
           <span className="footer-period-mobile"> • 📅 {periodLabel}</span>
           <span className="footer-total-mobile"> • 👥 {stats.totalSiswa} siswa</span>
+          <span className="footer-hadir-mobile"> • ✅ {stats.hadir} hadir</span>
         </p>
       </div>
 
-      {/* Detail Modal dengan Foto */}
+      {/* Detail Modal dengan Foto dan Daftar Tanggal */}
       {showDetailModal && selectedStudent && (
         <div className="modal-overlay-mobile" onClick={closeDetailModal}>
           <div className="modal-box-mobile" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-mobile">
-              <h3>📋 Detail Rekap {selectedStudent.nama}</h3>
+              <div className="modal-header-left">
+                <span className="modal-icon">📋</span>
+                <h3>Detail Rekap {selectedStudent.nama}</h3>
+              </div>
               <button className="modal-close-mobile" onClick={closeDetailModal}>✖</button>
             </div>
             <div className="modal-body-mobile">
@@ -906,10 +1027,11 @@ const RekapTab = ({ user }) => {
                     }}
                   />
                 </div>
-                <div>
+                <div className="modal-student-text">
                   <div className="modal-name-mobile">{selectedStudent.nama}</div>
-                  <div className="modal-id-mobile">ID: {selectedStudent.id}</div>
+                  <div className="modal-id-mobile">🆔 ID: {selectedStudent.id}</div>
                   <div className="modal-class-mobile">📚 {selectedStudent.kelas || '-'} | 🎓 {selectedStudent.jurusan || '-'}</div>
+                  <div className="modal-period-mobile">📅 {periodLabel}</div>
                 </div>
               </div>
 
@@ -940,18 +1062,34 @@ const RekapTab = ({ user }) => {
                 </div>
               </div>
 
+              <div className="modal-summary-mobile">
+                <div className="summary-item">
+                  <span className="summary-label">Total Kehadiran:</span>
+                  <span className="summary-value">{selectedStudent.hadirCount} / {selectedStudent.totalHari} hari</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Persentase:</span>
+                  <span className="summary-value" style={{ 
+                    color: selectedStudent.persentaseKehadiran >= 80 ? '#4caf50' : 
+                           selectedStudent.persentaseKehadiran >= 50 ? '#ff9800' : '#f44336' 
+                  }}>
+                    {selectedStudent.persentaseKehadiran}%
+                  </span>
+                </div>
+              </div>
+
               {selectedStudent.details && selectedStudent.details.length > 0 && (
                 <div className="modal-details-mobile">
-                  <h4>📅 Detail Harian</h4>
+                  <h4>📅 Detail Harian (Periode {periodLabel})</h4>
                   <div className="modal-details-scroll">
                     {selectedStudent.details.map((d, i) => (
-                      <div key={i} className="modal-detail-item">
+                      <div key={i} className={`modal-detail-item ${d.status === 'hadir' ? 'hadir' : 'alpha'}`}>
                         <span className="modal-detail-date">{formatDateShort(d.date)}</span>
                         <span className="modal-detail-day">{d.dayName}</span>
                         <span className="modal-detail-status" style={{ color: d.status === 'hadir' ? '#4caf50' : '#f44336' }}>
                           {d.statusIcon} {d.statusText}
                         </span>
-                        <span className="modal-detail-time">⏰ {d.timeIn}</span>
+                        <span className="modal-detail-time">⏰ {d.timeIn} {d.timeOut && `→ ${d.timeOut}`}</span>
                       </div>
                     ))}
                   </div>
@@ -960,6 +1098,88 @@ const RekapTab = ({ user }) => {
             </div>
             <div className="modal-footer-mobile">
               <button className="btn-close-modal-mobile" onClick={closeDetailModal}>Tutup</button>
+              {canExport && (
+                <button 
+                  className="btn-print-detail-mobile" 
+                  onClick={() => {
+                    const printWindow = window.open('', '_blank');
+                    if (!printWindow) {
+                      alert('Mohon izinkan popup untuk mencetak!');
+                      return;
+                    }
+                    
+                    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+                    let detailHtml = `
+                      <!DOCTYPE html>
+                      <html>
+                      <head><title>Detail Rekap ${selectedStudent.nama}</title>
+                      <style>
+                        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; }
+                        .header { text-align: center; border-bottom: 2px solid #4caf50; padding-bottom: 15px; }
+                        .header h1 { color: #4caf50; }
+                        .info { margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: center; }
+                        th { background: #4caf50; color: white; }
+                        .hadir { color: #4caf50; font-weight: bold; }
+                        .alpha { color: #f44336; font-weight: bold; }
+                        .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+                      </style>
+                      </head>
+                      <body>
+                        <div class="header">
+                          <h1>📋 Detail Rekap Absensi</h1>
+                          <p>${schoolName}</p>
+                        </div>
+                        <div class="info">
+                          <p><strong>Nama:</strong> ${selectedStudent.nama}</p>
+                          <p><strong>ID:</strong> ${selectedStudent.id}</p>
+                          <p><strong>Kelas:</strong> ${selectedStudent.kelas || '-'} | <strong>Jurusan:</strong> ${selectedStudent.jurusan || '-'}</p>
+                          <p><strong>Periode:</strong> ${periodLabel}</p>
+                          <p><strong>Total Hari:</strong> ${selectedStudent.totalHari || 0}</p>
+                          <p><strong>Hadir:</strong> ${selectedStudent.hadirCount || 0} | <strong>Persentase:</strong> ${selectedStudent.persentaseKehadiran || 0}%</p>
+                        </div>
+                        <table>
+                          <thead>
+                            <tr><th>No</th><th>Tanggal</th><th>Hari</th><th>Status</th><th>Jam Masuk</th><th>Jam Pulang</th></tr>
+                          </thead>
+                          <tbody>
+                    `;
+                    
+                    selectedStudent.details.forEach((d, idx) => {
+                      detailHtml += `
+                        <tr>
+                          <td>${idx + 1}</td>
+                          <td>${formatDateShort(d.date)}</td>
+                          <td>${d.dayName}</td>
+                          <td class="${d.status === 'hadir' ? 'hadir' : 'alpha'}">${d.statusIcon} ${d.statusText}</td>
+                          <td>${d.timeIn}</td>
+                          <td>${d.timeOut || '-'}</td>
+                        </tr>
+                      `;
+                    });
+                    
+                    detailHtml += `
+                          </tbody>
+                        </table>
+                        <div class="footer">
+                          <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}</p>
+                          <p>Sistem Absensi IoT</p>
+                        </div>
+                        <div style="text-align:center; margin-top:20px;">
+                          <button onclick="window.print()" style="padding:10px 24px; background:#4caf50; color:white; border:none; border-radius:6px; cursor:pointer;">🖨️ Cetak</button>
+                          <button onclick="window.close()" style="padding:10px 24px; background:#666; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:10px;">✖ Tutup</button>
+                        </div>
+                      </body>
+                      </html>
+                    `;
+                    printWindow.document.write(detailHtml);
+                    printWindow.document.close();
+                  }}
+                >
+                  🖨️ Cetak Detail
+                </button>
+              )}
             </div>
           </div>
         </div>
