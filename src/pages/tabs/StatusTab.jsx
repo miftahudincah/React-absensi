@@ -6,6 +6,7 @@ import './StatusTab.css';
 const StatusTab = ({ user, onStatusUpdate }) => {
   const [statusUnviewedCount, setStatusUnviewedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewingOwnStatus, setViewingOwnStatus] = useState(true);
 
   // ==================== HANDLE STATUS UPDATE ====================
   const handleStatusUpdate = useCallback((count) => {
@@ -21,6 +22,11 @@ const StatusTab = ({ user, onStatusUpdate }) => {
       detail: { count }
     }));
   }, [onStatusUpdate]);
+
+  // ==================== HANDLE VIEW CHANGE ====================
+  const handleViewChange = useCallback((isOwnStatus) => {
+    setViewingOwnStatus(isOwnStatus);
+  }, []);
 
   // ==================== CHECK IF STATUS SYSTEM IS READY ====================
   useEffect(() => {
@@ -58,10 +64,18 @@ const StatusTab = ({ user, onStatusUpdate }) => {
       }
     };
     
+    const handleStatusViewChange = (e) => {
+      if (e.detail && typeof e.detail.isOwnStatus === 'boolean') {
+        setViewingOwnStatus(e.detail.isOwnStatus);
+      }
+    };
+    
     window.addEventListener('statusBadgeUpdate', handleStatusBadgeUpdate);
+    window.addEventListener('statusViewChange', handleStatusViewChange);
     
     return () => {
       window.removeEventListener('statusBadgeUpdate', handleStatusBadgeUpdate);
+      window.removeEventListener('statusViewChange', handleStatusViewChange);
     };
   }, []);
 
@@ -101,16 +115,18 @@ const StatusTab = ({ user, onStatusUpdate }) => {
           )}
         </div>
         <div className="status-tab-subtitle">
-          <p>Lihat dan bagikan status dengan teman-teman Anda</p>
+          <p>{viewingOwnStatus ? 'Lihat dan bagikan status dengan teman-teman Anda' : 'Lihat status teman Anda'}</p>
         </div>
       </div>
 
-      {/* Status Manager */}
+      {/* Status Manager - with privacy props */}
       <div className="status-tab-content">
         <StatusManager 
           user={user}
           onStatusUpdate={handleStatusUpdate}
+          onViewChange={handleViewChange}
           activeTab="status"
+          showViewers={viewingOwnStatus} // Hanya tampilkan viewer jika melihat status sendiri
         />
       </div>
 
