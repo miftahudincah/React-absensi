@@ -1,6 +1,7 @@
 // src/components/Header.jsx
 import React, { useState } from 'react';
 import './Header.css';
+import MarqueeText from './MarqueeText'; // ⭐ IMPORT MARQUEE COMPONENT
 
 const Header = ({ 
   user, 
@@ -98,7 +99,12 @@ const Header = ({
           📱
         </span>
         <div className="header-school-name-wrapper">
-          <span className="header-school-name">{schoolName}</span>
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH DENGAN EFEK BERJALAN LOOPING ⭐ */}
+          <MarqueeText 
+            text={schoolName || 'Sistem Absensi'} 
+            speed={35}
+            className="header-school-name-marquee"
+          />
           <span className="header-school-name-underline"></span>
         </div>
         <span className="header-time">{currentTime}</span>
