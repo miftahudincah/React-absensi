@@ -1,8 +1,7 @@
 // src/pages/tabs/ChatTab.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ref, onValue, off, get, set, update, remove, runTransaction } from 'firebase/database';
+import { ref, onValue, off, get, set, update, remove } from 'firebase/database';
 import { db } from '../../firebase/config';
-// ==================== IMPORT LOGGER ====================
 import { 
   logActivity,
   logSendMessage,
@@ -12,7 +11,6 @@ import {
 } from '../../utils/logger';
 import './ChatTab.css';
 
-// API Base URL
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
 
 const ChatTab = ({ user }) => {
@@ -32,12 +30,16 @@ const ChatTab = ({ user }) => {
   const [friendCheckCache, setFriendCheckCache] = useState({});
   const [userDataCache, setUserDataCache] = useState({});
 
-  // Refs
+  // ==================== REFS ====================
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const chatMessagesListenerRef = useRef(null);
   const inboxListenerRef = useRef(null);
   const inputRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const loadingChatListRef = useRef(false);
+  const loadingMessagesRef = useRef(false);
+  const currentChatWithRef = useRef(null);
 
   // ==================== TOKEN MANAGEMENT ====================
   const getAuthToken = useCallback(async () => {
@@ -57,7 +59,7 @@ const ChatTab = ({ user }) => {
     return null;
   }, []);
 
-  // ==================== UPLOAD IMAGE TO SUPABASE VIA BACKEND ====================
+  // ==================== UPLOAD IMAGE ====================
   const uploadImageToSupabase = useCallback(async (file) => {
     try {
       const token = await getAuthToken();
@@ -101,7 +103,7 @@ const ChatTab = ({ user }) => {
     }
   }, [getAuthToken]);
 
-  // ==================== DELETE IMAGE FROM SUPABASE ====================
+  // ==================== DELETE IMAGE ====================
   const deleteImageFromSupabase = useCallback(async (imageUrl) => {
     if (!imageUrl || !imageUrl.includes('supabase.co')) {
       return { success: true };
@@ -140,12 +142,11 @@ const ChatTab = ({ user }) => {
     }
   }, [getAuthToken]);
 
-  // ==================== CHECK IF IMAGE IS FROM SUPABASE ====================
+  // ==================== UTILITY FUNCTIONS ====================
   const isSupabaseImage = useCallback((url) => {
     return url && url.includes('supabase.co');
   }, []);
 
-  // ==================== UTILITY FUNCTIONS ====================
   const getAvatarUrl = (name) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=00bcd4&color=fff&size=100`;
   };
@@ -179,7 +180,7 @@ const ChatTab = ({ user }) => {
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
-  // ==================== SHOW TOAST / ALERT ====================
+  // ==================== SHOW TOAST ====================
   const showToast = (message, type = 'info') => {
     if (typeof window.showToast === 'function') {
       window.showToast(message, type);
@@ -245,77 +246,91 @@ const ChatTab = ({ user }) => {
   // ==================== LOAD CHAT MESSAGES ====================
   const loadChatMessages = useCallback(async (friendUid) => {
     if (!user?.uid || !friendUid) return;
-
-    if (chatMessagesListenerRef.current) {
-      off(ref(db, `chats/${user.uid}/messages/${currentChatWith}`), chatMessagesListenerRef.current);
-      chatMessagesListenerRef.current = null;
-    }
-
-    const friendData = await getUserData(friendUid);
-    if (!friendData) {
-      showToast('❌ Pengguna tidak ditemukan', 'error');
-      setCurrentChatWith(null);
-      setMessages([]);
-      setChatPartnerData(null);
-      return;
-    }
-
-    const isFriend = await checkIsFriend(friendUid);
-    if (!isFriend) {
-      showToast('Anda tidak bisa chat dengan orang yang bukan teman!', 'error');
-      setCurrentChatWith(null);
-      setMessages([]);
-      setChatPartnerData(null);
-      return;
-    }
+    if (loadingMessagesRef.current) return;
+    
+    loadingMessagesRef.current = true;
 
     try {
-      await update(ref(db, `chats/${user.uid}/inbox/${friendUid}`), {
-        unreadCount: 0
-      });
-      setUnreadCounts(prev => ({ ...prev, [friendUid]: 0 }));
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-
-    try {
-      const friendSnapshot = await get(ref(db, `users_auth/${friendUid}`));
-      if (friendSnapshot.exists()) {
-        const data = friendSnapshot.val();
-        setChatPartnerData({ uid: friendUid, ...data });
-        setUserDataCache(prev => ({ ...prev, [friendUid]: data }));
-      } else {
-        setChatPartnerData(null);
-      }
-    } catch (error) {
-      console.error('Error loading friend data:', error);
-      setChatPartnerData(null);
-    }
-
-    const messagesRef = ref(db, `chats/${user.uid}/messages/${friendUid}`);
-    const listener = onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      const messagesList = [];
-      if (data) {
-        Object.entries(data).forEach(([msgId, msg]) => {
-          messagesList.push({ id: msgId, ...msg });
-        });
-        messagesList.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-      }
-      setMessages(messagesList);
-      scrollToBottom();
-    });
-
-    chatMessagesListenerRef.current = listener;
-    setCurrentChatWith(friendUid);
-
-    return () => {
+      // Cleanup old listener
       if (chatMessagesListenerRef.current) {
-        off(messagesRef, chatMessagesListenerRef.current);
+        off(ref(db, `chats/${user.uid}/messages/${currentChatWithRef.current}`), chatMessagesListenerRef.current);
         chatMessagesListenerRef.current = null;
       }
-    };
-  }, [user?.uid, currentChatWith, checkIsFriend, getUserData]);
+
+      const friendData = await getUserData(friendUid);
+      if (!friendData) {
+        showToast('❌ Pengguna tidak ditemukan', 'error');
+        setCurrentChatWith(null);
+        setMessages([]);
+        setChatPartnerData(null);
+        loadingMessagesRef.current = false;
+        return;
+      }
+
+      const isFriend = await checkIsFriend(friendUid);
+      if (!isFriend) {
+        showToast('Anda tidak bisa chat dengan orang yang bukan teman!', 'error');
+        setCurrentChatWith(null);
+        setMessages([]);
+        setChatPartnerData(null);
+        loadingMessagesRef.current = false;
+        return;
+      }
+
+      // Mark as read
+      try {
+        await update(ref(db, `chats/${user.uid}/inbox/${friendUid}`), {
+          unreadCount: 0
+        });
+        setUnreadCounts(prev => ({ ...prev, [friendUid]: 0 }));
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+
+      // Load friend data
+      try {
+        const friendSnapshot = await get(ref(db, `users_auth/${friendUid}`));
+        if (friendSnapshot.exists()) {
+          const data = friendSnapshot.val();
+          setChatPartnerData({ uid: friendUid, ...data });
+          setUserDataCache(prev => ({ ...prev, [friendUid]: data }));
+        } else {
+          setChatPartnerData(null);
+        }
+      } catch (error) {
+        console.error('Error loading friend data:', error);
+        setChatPartnerData(null);
+      }
+
+      // Set current chat
+      setCurrentChatWith(friendUid);
+      currentChatWithRef.current = friendUid;
+
+      // Setup messages listener
+      const messagesRef = ref(db, `chats/${user.uid}/messages/${friendUid}`);
+      const listener = onValue(messagesRef, (snapshot) => {
+        if (!isMountedRef.current) return;
+        
+        const data = snapshot.val();
+        const messagesList = [];
+        if (data) {
+          Object.entries(data).forEach(([msgId, msg]) => {
+            messagesList.push({ id: msgId, ...msg });
+          });
+          messagesList.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        }
+        setMessages(messagesList);
+        setTimeout(scrollToBottom, 100);
+      });
+
+      chatMessagesListenerRef.current = listener;
+
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+    } finally {
+      loadingMessagesRef.current = false;
+    }
+  }, [user?.uid, getUserData, checkIsFriend]);
 
   // ==================== LOAD CHAT LIST ====================
   const loadChatList = useCallback(async () => {
@@ -325,6 +340,9 @@ const ChatTab = ({ user }) => {
       return;
     }
 
+    if (loadingChatListRef.current) return;
+    loadingChatListRef.current = true;
+
     try {
       const inboxSnapshot = await get(ref(db, `chats/${user.uid}/inbox`));
       const inbox = inboxSnapshot.val();
@@ -332,6 +350,7 @@ const ChatTab = ({ user }) => {
       if (!inbox || Object.keys(inbox).length === 0) {
         setChatList([]);
         setLoading(false);
+        loadingChatListRef.current = false;
         return;
       }
 
@@ -407,11 +426,12 @@ const ChatTab = ({ user }) => {
       setChatList(filteredData);
       setLoading(false);
 
+      // Cleanup invalid chats
       const invalidUids = chatListData
         .filter(chat => !chat.exists || !chat.nama || chat.nama === 'Pengguna tidak dikenal')
         .map(chat => chat.uid);
 
-      if (invalidUids.length > 0) {
+      if (invalidUids.length > 0 && isMountedRef.current) {
         for (const uid of invalidUids) {
           try {
             await remove(ref(db, `chats/${user.uid}/inbox/${uid}`));
@@ -427,12 +447,15 @@ const ChatTab = ({ user }) => {
       console.error('Error loading chat list:', error);
       setChatList([]);
       setLoading(false);
+    } finally {
+      loadingChatListRef.current = false;
     }
   }, [user?.uid, userDataCache]);
 
   // ==================== SELECT CHAT ====================
   const selectChat = useCallback(async (friendUid) => {
     if (!friendUid) return;
+    if (currentChatWithRef.current === friendUid) return;
 
     const friendData = await getUserData(friendUid);
     if (!friendData) {
@@ -453,14 +476,8 @@ const ChatTab = ({ user }) => {
       return;
     }
 
-    if (chatMessagesListenerRef.current) {
-      off(ref(db, `chats/${user.uid}/messages/${currentChatWith}`), chatMessagesListenerRef.current);
-      chatMessagesListenerRef.current = null;
-    }
-
-    setCurrentChatWith(friendUid);
     await loadChatMessages(friendUid);
-  }, [user?.uid, currentChatWith, checkIsFriend, loadChatMessages, getUserData, loadChatList]);
+  }, [user?.uid, checkIsFriend, loadChatMessages, getUserData, loadChatList]);
 
   // ==================== SEND MESSAGE ====================
   const sendMessage = useCallback(async () => {
@@ -515,7 +532,6 @@ const ChatTab = ({ user }) => {
         })
       ]);
 
-      // ==================== ✅ LOG SEND MESSAGE ====================
       await logSendMessage(user, friendData.nama || currentChatWith, message);
       console.log('📝 Send message activity logged');
 
@@ -526,16 +542,13 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('Send message error:', error);
       showToast('❌ Gagal mengirim pesan', 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Send message failed to ${friendData?.nama || currentChatWith}: ${error.message}`, 'ChatTab/sendMessage');
-      
     } finally {
       setSending(false);
     }
   }, [messageInput, currentChatWith, user?.uid, sending, unreadCounts, checkIsFriend, getUserData, loadChatList]);
 
-  // ==================== SEND IMAGE - MIGRASI KE SUPABASE ====================
+  // ==================== SEND IMAGE ====================
   const sendImage = useCallback(async (file) => {
     if (!file || !currentChatWith) return;
 
@@ -563,7 +576,6 @@ const ChatTab = ({ user }) => {
     setUploadingImage(true);
 
     try {
-      // ⭐ UPLOAD KE SUPABASE VIA BACKEND ⭐
       const result = await uploadImageToSupabase(file);
       if (!result.success) {
         throw new Error(result.error || 'Upload gagal');
@@ -583,7 +595,7 @@ const ChatTab = ({ user }) => {
         mediaUrlPath: result.path || null,
         timestamp: timestamp,
         read: false,
-        deletedBy: [] // Array untuk track siapa yang sudah hapus
+        deletedBy: []
       };
 
       await Promise.all([
@@ -603,7 +615,6 @@ const ChatTab = ({ user }) => {
         })
       ]);
 
-      // ==================== ✅ LOG SEND IMAGE ====================
       await logActivity('send_image', 
         `Mengirim gambar ke ${friendData.nama || currentChatWith}`,
         user
@@ -615,33 +626,27 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('Send image error:', error);
       showToast('❌ Gagal mengirim gambar: ' + error.message, 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Send image failed to ${friendData?.nama || currentChatWith}: ${error.message}`, 'ChatTab/sendImage');
-      
     } finally {
       setUploadingImage(false);
     }
   }, [currentChatWith, user?.uid, unreadCounts, checkIsFriend, getUserData, loadChatList, uploadImageToSupabase]);
 
-  // ==================== DELETE IMAGE WITH TWO-WAY CONFIRMATION ====================
+  // ==================== DELETE IMAGE MESSAGE ====================
   const handleDeleteImageMessage = useCallback(async (friendUid, messageId, messageData) => {
     try {
       const mediaUrl = messageData.mediaUrl;
       const isSupabase = isSupabaseImage(mediaUrl);
 
-      // 1. Update pesan di sisi user saat ini (tandai dihapus)
       await update(ref(db, `chats/${user.uid}/messages/${friendUid}/${messageId}`), {
         deleted: true,
         deletedAt: Date.now(),
         deletedBy: user.uid
       });
 
-      // 2. Cek pesan di sisi teman
       const friendMessageSnapshot = await get(ref(db, `chats/${friendUid}/messages/${user.uid}/${messageId}`));
       const friendMessageData = friendMessageSnapshot.val();
 
-      // 3. Jika teman juga sudah menghapus pesan ini, maka hapus file dari Supabase
       if (friendMessageData && friendMessageData.deleted === true) {
         console.log('🔍 Kedua user sudah menghapus pesan, menghapus gambar dari Supabase...');
         
@@ -649,7 +654,6 @@ const ChatTab = ({ user }) => {
           await deleteImageFromSupabase(mediaUrl);
         }
         
-        // Hapus pesan dari kedua sisi
         await Promise.all([
           remove(ref(db, `chats/${user.uid}/messages/${friendUid}/${messageId}`)),
           remove(ref(db, `chats/${friendUid}/messages/${user.uid}/${messageId}`))
@@ -660,7 +664,6 @@ const ChatTab = ({ user }) => {
         console.log('✅ Pesan dihapus dari sisi user, menunggu teman juga menghapus');
       }
 
-      // ==================== ✅ LOG DELETE IMAGE ====================
       const friendData = await getUserData(friendUid);
       await logActivity('delete_image_message', 
         `Menghapus gambar dari chat dengan ${friendData?.nama || friendUid}`,
@@ -668,7 +671,6 @@ const ChatTab = ({ user }) => {
       );
       console.log('📝 Delete image activity logged');
 
-      // Refresh chat list dan messages
       if (currentChatWith === friendUid) {
         loadChatMessages(friendUid);
       }
@@ -677,8 +679,6 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('❌ Delete image message error:', error);
       showToast('❌ Gagal menghapus pesan', 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Delete image message failed: ${error.message}`, 'ChatTab/deleteImage');
     }
   }, [user?.uid, currentChatWith, loadChatMessages, loadChatList, deleteImageFromSupabase, isSupabaseImage, getUserData]);
@@ -696,13 +696,11 @@ const ChatTab = ({ user }) => {
         return;
       }
 
-      // ⭐ Jika pesan adalah gambar, gunakan handler khusus
       if (msgData.type === 'image') {
         await handleDeleteImageMessage(friendUid, messageId, msgData);
         return;
       }
 
-      // Untuk pesan teks biasa
       const inboxSnapshot = await get(ref(db, `chats/${user.uid}/inbox/${friendUid}`));
       const inboxData = inboxSnapshot.val();
       const wasLastMessage = inboxData?.lastMessageTime === msgData?.timestamp;
@@ -731,7 +729,6 @@ const ChatTab = ({ user }) => {
         }
       }
 
-      // ==================== ✅ LOG DELETE MESSAGE ====================
       const friendData = await getUserData(friendUid);
       await logActivity('delete_chat_message', 
         `Menghapus pesan dari chat dengan ${friendData?.nama || friendUid}`,
@@ -747,8 +744,6 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('Delete message error:', error);
       showToast('❌ Gagal menghapus pesan', 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Delete message failed: ${error.message}`, 'ChatTab/deleteMessage');
     }
   }, [user?.uid, currentChatWith, loadChatMessages, loadChatList, handleDeleteImageMessage, getUserData]);
@@ -761,7 +756,6 @@ const ChatTab = ({ user }) => {
       const friendSnapshot = await get(ref(db, `users_auth/${friendUid}`));
       const friendName = friendSnapshot.exists() ? friendSnapshot.val().nama : friendUid;
 
-      // ⭐ Ambil semua pesan gambar untuk dihapus nanti jika diperlukan
       const messagesSnapshot = await get(ref(db, `chats/${user.uid}/messages/${friendUid}`));
       const messagesData = messagesSnapshot.val();
       const imageMessages = [];
@@ -774,26 +768,21 @@ const ChatTab = ({ user }) => {
         });
       }
 
-      // Hapus chat dari sisi user
       await Promise.all([
         remove(ref(db, `chats/${user.uid}/messages/${friendUid}`)),
         remove(ref(db, `chats/${user.uid}/inbox/${friendUid}`))
       ]);
 
-      // ⭐ Cek apakah teman juga sudah menghapus chat ini
       const friendInboxSnapshot = await get(ref(db, `chats/${friendUid}/inbox/${user.uid}`));
       const friendInbox = friendInboxSnapshot.val();
 
-      // Jika teman juga sudah menghapus, hapus semua gambar dari Supabase
       if (!friendInbox) {
         console.log('🔍 Kedua user sudah menghapus chat, menghapus semua gambar...');
         for (const img of imageMessages) {
           if (img.mediaUrl && isSupabaseImage(img.mediaUrl)) {
-            // Cek apakah pesan gambar masih ada di sisi teman
             const friendMsgSnapshot = await get(ref(db, `chats/${friendUid}/messages/${user.uid}/${img.id}`));
             const friendMsg = friendMsgSnapshot.val();
             
-            // Jika teman juga sudah menghapus pesan ini, hapus gambar
             if (!friendMsg || friendMsg.deleted === true) {
               await deleteImageFromSupabase(img.mediaUrl);
               console.log('🗑️ Gambar dihapus dari Supabase:', img.mediaUrl);
@@ -801,7 +790,6 @@ const ChatTab = ({ user }) => {
           }
         }
         
-        // Hapus semua pesan di sisi teman juga
         await remove(ref(db, `chats/${friendUid}/messages/${user.uid}`));
       }
 
@@ -816,16 +804,13 @@ const ChatTab = ({ user }) => {
       await loadChatList();
       showToast(`✅ Chat dengan ${friendName} telah dibersihkan`, 'success');
 
-      // ==================== ✅ LOG CLEAR CHAT ====================
       await logClearChat(user, friendName);
       console.log('📝 Clear chat activity logged');
 
     } catch (error) {
       console.error('Clear chat error:', error);
       showToast('❌ Gagal membersihkan chat', 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
-      await logError(user, `Clear chat failed with ${friendName}: ${error.message}`, 'ChatTab/clearChat');
+      await logError(user, `Clear chat failed: ${error.message}`, 'ChatTab/clearChat');
     }
   }, [user?.uid, currentChatWith, loadChatList, deleteImageFromSupabase, isSupabaseImage]);
 
@@ -841,7 +826,6 @@ const ChatTab = ({ user }) => {
       setSelectedFriend({ uid: friendUid, ...friendData });
       setShowProfileModal(true);
       
-      // ==================== ✅ LOG VIEW PROFILE ====================
       await logActivity('view_chat_profile', 
         `Melihat profil ${friendData.nama || friendUid} dari chat`,
         user
@@ -850,8 +834,6 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('Load friend profile error:', error);
       showToast('❌ Gagal memuat profil', 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `View profile failed for ${friendUid}: ${error.message}`, 'ChatTab/viewProfile');
     }
   }, [user]);
@@ -861,8 +843,11 @@ const ChatTab = ({ user }) => {
     if (!user?.uid) return;
 
     const inboxRef = ref(db, `chats/${user.uid}/inbox`);
+    let isFirstLoad = true;
 
     const listener = onValue(inboxRef, (snapshot) => {
+      if (!isMountedRef.current) return;
+
       const data = snapshot.val();
       if (data) {
         const unread = {};
@@ -885,16 +870,17 @@ const ChatTab = ({ user }) => {
           }
         }
 
+        // Load chat list only on first load or when data changes significantly
         loadChatList();
 
-        if (currentChatWith) {
-          const validChats = data[currentChatWith];
+        // Check if current chat still exists
+        if (currentChatWithRef.current) {
+          const validChats = data[currentChatWithRef.current];
           if (!validChats) {
             setCurrentChatWith(null);
             setMessages([]);
             setChatPartnerData(null);
-          } else {
-            loadChatMessages(currentChatWith);
+            currentChatWithRef.current = null;
           }
         }
       } else {
@@ -910,9 +896,10 @@ const ChatTab = ({ user }) => {
     return () => {
       if (inboxListenerRef.current) {
         off(inboxRef, listener);
+        inboxListenerRef.current = null;
       }
     };
-  }, [user?.uid, currentChatWith, loadChatList, loadChatMessages]);
+  }, [user?.uid, loadChatList]);
 
   // ==================== LISTEN FOR START CHAT EVENT ====================
   useEffect(() => {
@@ -936,14 +923,21 @@ const ChatTab = ({ user }) => {
 
   // ==================== INITIAL LOAD ====================
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (user?.uid) {
       loadChatList();
     }
 
     return () => {
+      isMountedRef.current = false;
       if (chatMessagesListenerRef.current) {
-        off(ref(db, `chats/${user?.uid}/messages/${currentChatWith}`), chatMessagesListenerRef.current);
+        off(ref(db, `chats/${user?.uid}/messages/${currentChatWithRef.current}`), chatMessagesListenerRef.current);
         chatMessagesListenerRef.current = null;
+      }
+      if (inboxListenerRef.current) {
+        off(ref(db, `chats/${user?.uid}/inbox`), inboxListenerRef.current);
+        inboxListenerRef.current = null;
       }
     };
   }, [user?.uid]);
