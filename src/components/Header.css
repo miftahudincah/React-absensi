@@ -1,17 +1,21 @@
 /* src/components/Header.css */
 
+/* ===== HEADER ===== */
 .main-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 24px;
-  background: #151524;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, #151524 0%, #1a1a2e 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   position: sticky;
   top: 0;
   z-index: 100;
+  min-height: 64px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
 }
 
+/* ===== HAMBURGER BUTTON ===== */
 .hamburger {
   display: none;
   background: none;
@@ -19,60 +23,199 @@
   color: #fff;
   font-size: 24px;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
+.hamburger:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hamburger-icon {
+  display: block;
+  line-height: 1;
+}
+
+/* ===== HEADER CENTER ===== */
 .header-center {
   display: flex;
   align-items: center;
   gap: 12px;
   flex: 1;
   margin-left: 16px;
+  min-width: 0;
 }
 
 .header-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  transition: all 0.3s ease;
+}
+
+.header-logo:hover {
+  transform: scale(1.05);
+  border-color: rgba(0, 188, 212, 0.3);
 }
 
 .header-logo-placeholder {
-  font-size: 28px;
+  font-size: 30px;
+  flex-shrink: 0;
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* ===== SCHOOL NAME WITH ANIMATED UNDERLINE ===== */
+.header-school-name-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .header-school-name {
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff, #4dd0e1, #00bcd4, #4dd0e1, #ffffff);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease-in-out infinite;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: none;
+  line-height: 1.2;
 }
 
+.header-school-name-underline {
+  width: 0%;
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent, #00bcd4, #4dd0e1, #00bcd4, transparent);
+  border-radius: 2px;
+  animation: underline-expand 2s ease-out forwards, underline-pulse 2.5s ease-in-out infinite 2s;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px rgba(0, 188, 212, 0.3);
+}
+
+/* ===== ANIMATIONS FOR SCHOOL NAME ===== */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 50%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes underline-expand {
+  0% { width: 0%; opacity: 0; }
+  100% { width: 80%; opacity: 1; }
+}
+
+@keyframes underline-pulse {
+  0% { width: 80%; opacity: 0.6; }
+  50% { width: 95%; opacity: 1; }
+  100% { width: 80%; opacity: 0.6; }
+}
+
+/* ===== HEADER TIME ===== */
+.header-time {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ===== HEADER USER ===== */
 .header-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  flex-shrink: 0;
 }
 
 .header-user-info {
   text-align: right;
+  min-width: 0;
 }
 
 .header-user-name {
   display: block;
   color: #fff;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .header-user-role {
   font-size: 10px;
-  padding: 2px 10px;
+  padding: 2px 12px;
   border-radius: 20px;
   display: inline-block;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
+/* ===== ROLE COLORS ===== */
+.role-developer {
+  background: rgba(155, 89, 182, 0.2);
+  color: #9b59b6;
+}
+
+.role-admin {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
+.role-wakil {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.role-staff-tu {
+  background: rgba(96, 125, 139, 0.2);
+  color: #607d8b;
+}
+
+.role-guru {
+  background: rgba(243, 156, 18, 0.2);
+  color: #f39c12;
+}
+
+.role-siswa {
+  background: rgba(230, 126, 34, 0.2);
+  color: #e67e22;
+}
+
+/* ===== AVATAR ===== */
 .header-avatar-wrapper {
   position: relative;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .header-avatar {
@@ -81,37 +224,210 @@
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255, 255, 255, 0.1);
-  transition: border-color 0.3s;
+  transition: all 0.3s ease;
+  display: block;
 }
 
 .header-avatar:hover {
   border-color: #00bcd4;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 188, 212, 0.2);
 }
 
-.avatar-upload-hint {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  background: #00bcd4;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
+.header-avatar.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(135deg, #00bcd4, #0097a7);
+  font-size: 18px;
+  font-weight: 600;
   color: #fff;
-  opacity: 0;
-  transition: opacity 0.3s;
 }
 
-.header-avatar-wrapper:hover .avatar-upload-hint {
+.header-avatar.uploading {
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
+
+/* ===== AVATAR PROGRESS RING ===== */
+.avatar-progress-ring {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+}
+
+.progress-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.progress-ring-fill {
+  stroke: #00bcd4;
+  transition: stroke-dasharray 0.3s ease;
+  stroke-linecap: round;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  font-weight: 700;
+  color: #00bcd4;
+  text-shadow: 0 0 10px rgba(0, 188, 212, 0.3);
+}
+
+/* ===== AVATAR UPLOAD SPINNER ===== */
+.avatar-upload-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #00bcd4;
+  border-radius: 50%;
+  animation: spinnerRotate 0.8s linear infinite;
+}
+
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== AVATAR UPLOAD OVERLAY ===== */
+.avatar-upload-overlay {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: #00bcd4;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  border: 2px solid #151524;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 188, 212, 0.4);
+}
+
+.header-avatar-wrapper:hover .avatar-upload-overlay {
   opacity: 1;
+  transform: scale(1);
+}
+
+/* ===== AVATAR TOOLTIP ===== */
+.avatar-tooltip {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.avatar-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(0, 0, 0, 0.9);
+}
+
+.header-avatar-wrapper:hover .avatar-tooltip {
+  opacity: 1;
+  bottom: -38px;
+}
+
+/* ===== AVATAR STATUS INDICATOR ===== */
+.avatar-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #151524;
+  background: #4caf50;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.avatar-status.status-developer {
+  background: #9b59b6;
+  animation: statusPulsePurple 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
+  }
+}
+
+@keyframes statusPulsePurple {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(155, 89, 182, 0);
+  }
+}
+
+/* ========================================== */
+/* ===== RESPONSIVE ===== */
+/* ========================================== */
+
+@media (max-width: 1024px) {
+  .header-school-name {
+    font-size: 16px;
+  }
+  
+  .header-user-name {
+    max-width: 100px;
+  }
 }
 
 @media (max-width: 768px) {
   .main-header {
     padding: 10px 16px;
+    min-height: 56px;
   }
   
   .hamburger {
@@ -120,43 +436,330 @@
   
   .header-center {
     margin-left: 8px;
+    gap: 10px;
   }
   
   .header-school-name {
-    font-size: 14px;
+    font-size: 15px;
+  }
+  
+  .header-school-name-underline {
+    width: 60%;
+  }
+  
+  @keyframes underline-expand {
+    0% { width: 0%; opacity: 0; }
+    100% { width: 60%; opacity: 1; }
+  }
+  
+  @keyframes underline-pulse {
+    0% { width: 60%; opacity: 0.6; }
+    50% { width: 80%; opacity: 1; }
+    100% { width: 60%; opacity: 0.6; }
+  }
+  
+  .header-time {
+    display: none;
   }
   
   .header-user-info {
     display: none;
+  }
+  
+  .header-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .header-logo {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .header-logo-placeholder {
+    font-size: 24px;
   }
 }
 
 @media (max-width: 480px) {
   .main-header {
     padding: 8px 12px;
+    min-height: 48px;
   }
   
   .header-school-name {
-    font-size: 12px;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+  }
+  
+  .header-school-name-underline {
+    width: 50%;
+    height: 2px;
+  }
+  
+  @keyframes underline-expand {
+    0% { width: 0%; opacity: 0; }
+    100% { width: 50%; opacity: 1; }
+  }
+  
+  @keyframes underline-pulse {
+    0% { width: 50%; opacity: 0.6; }
+    50% { width: 70%; opacity: 1; }
+    100% { width: 50%; opacity: 0.6; }
   }
   
   .header-logo {
     width: 24px;
     height: 24px;
   }
+  
+  .header-logo-placeholder {
+    font-size: 20px;
+  }
+  
+  .header-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .header-avatar.placeholder {
+    font-size: 14px;
+  }
+  
+  .avatar-status {
+    width: 10px;
+    height: 10px;
+    bottom: -2px;
+    right: -2px;
+    border-width: 1.5px;
+  }
+  
+  .avatar-upload-overlay {
+    width: 16px;
+    height: 16px;
+    font-size: 8px;
+    bottom: -4px;
+    right: -4px;
+  }
+  
+  .avatar-progress-ring {
+    width: 40px;
+    height: 40px;
+    top: -4px;
+    left: -4px;
+  }
+  
+  .progress-text {
+    font-size: 7px;
+  }
+  
+  .avatar-tooltip {
+    font-size: 8px;
+    padding: 3px 10px;
+    bottom: -28px;
+  }
+  
+  .header-avatar-wrapper:hover .avatar-tooltip {
+    bottom: -34px;
+  }
+  
+  .header-center {
+    gap: 8px;
+    margin-left: 4px;
+  }
 }
+
+@media (max-width: 360px) {
+  .header-school-name {
+    font-size: 11px;
+  }
+  
+  .header-logo {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .header-logo-placeholder {
+    font-size: 18px;
+  }
+  
+  .header-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .header-avatar.placeholder {
+    font-size: 12px;
+  }
+}
+
+/* ========================================== */
+/* ===== DARK MODE SUPPORT ===== */
+/* ========================================== */
 
 @media (prefers-color-scheme: light) {
   .main-header {
-    background: #ffffff;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+  }
+  
+  .hamburger {
+    color: #1a1a2e;
+  }
+  
+  .hamburger:hover {
+    background: rgba(0, 0, 0, 0.05);
   }
   
   .header-school-name {
-    color: #1a1a2e;
+    background: linear-gradient(135deg, #1a1a2e, #00bcd4, #1a1a2e);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .header-school-name-underline {
+    background: linear-gradient(90deg, transparent, #00bcd4, #0097a7, #00bcd4, transparent);
+  }
+  
+  .header-time {
+    color: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.04);
   }
   
   .header-user-name {
     color: #1a1a2e;
+  }
+  
+  .avatar-upload-overlay {
+    border-color: #ffffff;
+  }
+  
+  .avatar-status {
+    border-color: #ffffff;
+  }
+  
+  .avatar-tooltip {
+    background: rgba(255, 255, 255, 0.95);
+    color: #1a1a2e;
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .avatar-tooltip::before {
+    border-bottom-color: rgba(255, 255, 255, 0.95);
+  }
+  
+  .header-logo {
+    border-color: rgba(0, 0, 0, 0.06);
+    background: rgba(0, 0, 0, 0.02);
+  }
+  
+  .header-avatar {
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  .header-avatar:hover {
+    border-color: #00bcd4;
+  }
+  
+  .header-avatar.placeholder {
+    background: linear-gradient(135deg, #00bcd4, #0097a7);
+    color: #fff;
+  }
+  
+  .progress-ring-bg {
+    stroke: rgba(0, 0, 0, 0.1);
+  }
+  
+  .spinner {
+    border-color: rgba(0, 0, 0, 0.1);
+    border-top-color: #00bcd4;
+  }
+}
+
+/* ========================================== */
+/* ===== ACCESSIBILITY ===== */
+/* ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .main-header,
+  .header-logo,
+  .header-avatar,
+  .header-logo-placeholder,
+  .avatar-upload-overlay,
+  .avatar-tooltip,
+  .hamburger {
+    transition: none;
+    animation: none;
+  }
+  
+  .header-school-name {
+    animation: none;
+    background: linear-gradient(135deg, #ffffff, #00bcd4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .header-school-name-underline {
+    animation: none;
+    width: 80%;
+    opacity: 0.8;
+  }
+  
+  .avatar-status {
+    animation: none;
+  }
+  
+  .avatar-status.status-developer {
+    animation: none;
+  }
+  
+  .header-logo-placeholder {
+    animation: none;
+  }
+}
+
+/* ========================================== */
+/* ===== PRINT STYLES ===== */
+/* ========================================== */
+
+@media print {
+  .main-header {
+    position: static;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    box-shadow: none;
+  }
+  
+  .hamburger,
+  .header-time,
+  .avatar-upload-overlay,
+  .avatar-tooltip,
+  .avatar-status,
+  .avatar-progress-ring,
+  .avatar-upload-spinner {
+    display: none !important;
+  }
+  
+  .header-school-name {
+    -webkit-text-fill-color: #1a1a2e !important;
+    background: none !important;
+    color: #1a1a2e !important;
+  }
+  
+  .header-school-name-underline {
+    display: none;
+  }
+  
+  .header-avatar {
+    border-color: #ddd !important;
+  }
+  
+  .header-user-name {
+    color: #1a1a2e !important;
   }
 }
