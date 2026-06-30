@@ -16,6 +16,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './UserTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -49,12 +51,63 @@ const UsersTab = ({ user }) => {
   const [filterCodeStatus, setFilterCodeStatus] = useState('all');
   const [isResetting, setIsResetting] = useState(false);
   
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
+  
   // State untuk reset password
   const [resetLoading, setResetLoading] = useState({});
   const [resetResult, setResetResult] = useState({});
 
   // State untuk toast notification
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [UsersTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [UsersTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [UsersTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [UsersTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== TOAST NOTIFICATION ====================
   const showToast = (message, type = 'success') => {
@@ -907,7 +960,7 @@ const UsersTab = ({ user }) => {
     setResetResult(prev => ({ ...prev, [uid]: '' }));
 
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       
       const actionCodeSettings = {
         url: window.location.origin + '/login',
@@ -946,7 +999,7 @@ const UsersTab = ({ user }) => {
         
         if (formattedPhone.length >= 10) {
           const whatsappMessage = 
-            `*🔑 RESET PASSWORD - ${schoolName}*\n\n` +
+            `*🔑 RESET PASSWORD - ${schoolNameText}*\n\n` +
             `Halo *${name || 'User'}*,\n\n` +
             `Kami menerima permintaan untuk mereset password akun Anda.\n\n` +
             `📧 *Email:* ${email}\n\n` +
@@ -1240,12 +1293,25 @@ const UsersTab = ({ user }) => {
 
       {/* Header */}
       <div className="users-tab-header">
-        <h2>👥 Manajemen User</h2>
+        <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="users-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="users-school-name-marquee"
+            />
+            <div className="users-school-name-underline"></div>
+          </div>
+          <h2>👥 Manajemen User</h2>
+          <p className="header-subtitle">Kelola user, role, dan kode registrasi</p>
+        </div>
         <div className="header-user-info">
           <span className="user-name">{user?.name || user?.email}</span>
           <span className="user-role-badge" style={{ background: getRoleColor(user?.role) }}>
             {getRoleIcon(user?.role)} {getRoleDisplayName(user?.role)}
           </span>
+          <span className="school-badge">🏫 {schoolName}</span>
         </div>
       </div>
 
@@ -1894,6 +1960,7 @@ const UsersTab = ({ user }) => {
               <span>🔴 Terpakai: <strong style={{ color: '#f44336' }}>{filteredCodes.filter(c => c.used).length}</strong></span>
               <span>🎓 Siswa: <strong style={{ color: '#e67e22' }}>{filteredCodes.filter(c => c.type === 'siswa').length}</strong></span>
               <span>👨‍🏫 Staff/Guru: <strong style={{ color: '#9b59b6' }}>{filteredCodes.filter(c => c.type === 'guru' || c.type === 'staff').length}</strong></span>
+              <span className="school-code-stat" style={{ color: '#00bcd4' }}>🏫 {schoolName}</span>
             </div>
 
             {filteredCodes.length === 0 ? (
@@ -2085,6 +2152,7 @@ const UsersTab = ({ user }) => {
       }}>
         <span>🔄 Data real-time dari Firebase</span>
         <span>📱 {new Date().toLocaleString('id-ID')}</span>
+        <span className="footer-school">🏫 {schoolName}</span>
         {user?.role === 'developer' && (
           <span style={{ color: '#f44336', fontWeight: 'bold' }}>💻 Developer Mode</span>
         )}
@@ -2172,6 +2240,7 @@ const UsersTab = ({ user }) => {
                   )}
                   <li style={{ padding: '4px 0' }}>📅 Dibuat: {new Date().toLocaleString('id-ID')}</li>
                   <li style={{ padding: '4px 0' }}>⏰ Expired: 5 jam</li>
+                  <li style={{ padding: '4px 0', color: '#00bcd4' }}>🏫 Sekolah: {schoolName}</li>
                 </ul>
                 <div className="modal-note" style={{
                   marginTop: '12px',
