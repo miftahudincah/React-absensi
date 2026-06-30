@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, off, get, set, update, remove } from 'firebase/database';
 import { db } from '../firebase/config';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from './MarqueeText';
 import './DashboardContent.css';
 
 // ==================== CONSTANTS ====================
@@ -82,6 +84,9 @@ const DashboardContent = ({ stats, user, profilePhoto, onTabChange }) => {
   });
   const [attendancePercentage, setAttendancePercentage] = useState(0);
 
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
+
   // ==================== STATUS STATE ====================
   const [myStatuses, setMyStatuses] = useState([]);
   const [friendsStatuses, setFriendsStatuses] = useState([]);
@@ -108,6 +113,54 @@ const DashboardContent = ({ stats, user, profilePhoto, onTabChange }) => {
   const toastTimeoutRef = useRef(null);
   const statsRef = useRef(null);
   const animationDone = useRef(false);
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [Dashboard] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [Dashboard] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [Dashboard] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [Dashboard] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== ROLE HELPERS ====================
   const isSiswa = user?.role === 'siswa';
@@ -936,6 +989,19 @@ const DashboardContent = ({ stats, user, profilePhoto, onTabChange }) => {
         <div className="bg-orb orb-3"></div>
       </div>
 
+      {/* School Name Header */}
+      <div className="dashboard-school-header">
+        {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+        <div className="dashboard-school-name-wrapper">
+          <MarqueeText 
+            text={schoolName || 'Sistem Absensi'} 
+            speed={30}
+            className="dashboard-school-name-marquee"
+          />
+          <div className="dashboard-school-name-underline"></div>
+        </div>
+      </div>
+
       {/* Welcome Section */}
       <div className="dashboard-welcome">
         <div className="welcome-header">
@@ -1171,6 +1237,9 @@ const DashboardContent = ({ stats, user, profilePhoto, onTabChange }) => {
         </div>
         <div className="realtime-time">
           <span>🔄 Last updated: {currentTime}</span>
+        </div>
+        <div className="realtime-school">
+          <span>🏫 {schoolName}</span>
         </div>
       </div>
 
