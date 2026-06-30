@@ -12,6 +12,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './FriendsTab.css';
 
 const FriendsTab = ({ user, onStartChat }) => {
@@ -27,10 +29,14 @@ const FriendsTab = ({ user, onStartChat }) => {
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
+  
   // Refs untuk listeners
   const requestsListenerRef = useRef(null);
   const friendsListenerRef = useRef(null);
   const userDataCache = useRef({});
+  const isMountedRef = useRef(true);
 
   // ==================== ROLE HELPER ====================
   const getRoleDisplayName = (role) => {
@@ -68,6 +74,54 @@ const FriendsTab = ({ user, onStartChat }) => {
     };
     return colors[role] || '#7f8c8d';
   };
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [FriendsTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [FriendsTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [FriendsTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [FriendsTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== UTILITY FUNCTIONS ====================
   const getAvatarUrl = (name) => {
@@ -326,7 +380,7 @@ const FriendsTab = ({ user, onStartChat }) => {
     friendsListenerRef.current = listener;
   }, [user?.uid, enrichFriendsWithLatestData]);
 
-  // ==================== SEARCH USER (DIPERBAIKI - TANPA ONCLICK HTML) ====================
+  // ==================== SEARCH USER ====================
   const searchUserByEmail = useCallback(async () => {
     if (!searchEmail.trim()) {
       showToast('Masukkan email yang ingin dicari!', 'error');
@@ -691,7 +745,7 @@ const FriendsTab = ({ user, onStartChat }) => {
     showToast(`💬 Memulai chat dengan ${friendName}...`, 'info');
   }, [user, onStartChat]);
 
-  // ==================== VIEW FRIEND PROFILE (DENGAN KELAS & JURUSAN) ====================
+  // ==================== VIEW FRIEND PROFILE ====================
   const viewFriendProfile = useCallback(async (friendUid) => {
     try {
       console.log('👤 [FriendsTab] Viewing profile for friend:', friendUid);
@@ -752,8 +806,20 @@ const FriendsTab = ({ user, onStartChat }) => {
 
   return (
     <div className="friends-tab-container">
+      {/* ===== HEADER ===== */}
       <div className="friends-header">
-        <h2>👥 Teman</h2>
+        <div className="friends-header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="friends-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="friends-school-name-marquee"
+            />
+            <div className="friends-school-name-underline"></div>
+          </div>
+          <h2>👥 Teman</h2>
+        </div>
         <div className="friends-stats">
           <span className="stat-badge">
             <span className="stat-icon">👥</span>
@@ -789,7 +855,7 @@ const FriendsTab = ({ user, onStartChat }) => {
           </button>
         </div>
 
-        {/* ===== SEARCH RESULT (DIPERBAIKI - TANPA ONCLICK HTML) ===== */}
+        {/* ===== SEARCH RESULT ===== */}
         {searchResult && (
           <div className={`search-result ${searchResult.error ? 'error' : ''}`}>
             {searchResult.error ? (
@@ -1018,7 +1084,7 @@ const FriendsTab = ({ user, onStartChat }) => {
         )}
       </div>
 
-      {/* ===== PROFILE MODAL (HANYA TAMPILKAN KELAS & JURUSAN UNTUK SISWA) ===== */}
+      {/* ===== PROFILE MODAL ===== */}
       {showProfileModal && selectedFriend && (
         <div className="modal-overlay open" onClick={() => setShowProfileModal(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
@@ -1143,6 +1209,19 @@ const FriendsTab = ({ user, onStartChat }) => {
           </div>
         </div>
       )}
+
+      {/* ===== FOOTER ===== */}
+      <div className="friends-footer">
+        <p>
+          👥 Manajemen teman
+          <span className="footer-role"> • Role: {getRoleDisplayName(user?.role)}</span>
+          <span className="footer-school"> • 🏫 {schoolName || 'Sistem Absensi'}</span>
+          <span className="footer-total"> • 👥 {friendsCount} teman</span>
+          {friendRequestCount > 0 && (
+            <span className="footer-requests"> • 📨 {friendRequestCount} permintaan</span>
+          )}
+        </p>
+      </div>
     </div>
   );
 };

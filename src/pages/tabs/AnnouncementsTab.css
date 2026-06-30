@@ -1,5 +1,53 @@
 /* src/pages/tabs/AnnouncementsTab.css */
 
+/* ===== MARQUEE TEXT STYLES ===== */
+.announcements-school-name-wrapper {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 2px;
+}
+
+.announcements-school-name-marquee {
+  width: 100%;
+  max-width: 500px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #00bcd4;
+  letter-spacing: 0.5px;
+}
+
+.announcements-school-name-marquee .marquee-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.announcements-school-name-marquee .marquee-content {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 2px 0;
+}
+
+.announcements-school-name-marquee .marquee-separator {
+  color: rgba(0, 188, 212, 0.2);
+  margin: 0 8px;
+}
+
+.announcements-school-name-underline {
+  display: block;
+  width: 40%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00bcd4, transparent);
+  border-radius: 2px;
+  margin-top: 2px;
+  transition: width 0.3s ease;
+}
+
+.announcements-school-name-wrapper:hover .announcements-school-name-underline {
+  width: 60%;
+}
+
+/* ===== CONTAINER ===== */
 .announcements-container {
   padding: 20px;
   max-width: 1200px;
@@ -17,15 +65,22 @@
   flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  padding: 16px 20px;
+  background: var(--bg-secondary, rgba(255,255,255,0.03));
+  border-radius: 12px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.06));
+}
+
+.announcements-header .header-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .announcements-header .header-left h1 {
   font-size: 24px;
   font-weight: 700;
   color: var(--text-primary, #e8e8e8);
-  margin: 0 0 4px 0;
+  margin: 2px 0 4px 0;
 }
 
 .announcements-header .header-subtitle {
@@ -51,6 +106,7 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .btn-create-announcement {
@@ -75,6 +131,12 @@
 
 .btn-create-announcement:active {
   transform: translateY(0);
+}
+
+.btn-create-announcement:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-mark-all-read {
@@ -157,6 +219,10 @@
   font-weight: 600;
   margin: 0;
   color: var(--text-primary, #e8e8e8);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .form-close {
@@ -204,6 +270,7 @@
   color: var(--text-primary, #e8e8e8);
   font-size: 14px;
   transition: border-color 0.3s;
+  font-family: inherit;
 }
 
 .form-input:focus,
@@ -211,6 +278,14 @@
 .form-textarea:focus {
   outline: none;
   border-color: #00bcd4;
+  box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .form-textarea {
@@ -294,8 +369,13 @@
   transition: all 0.3s ease;
 }
 
-.file-upload-label:hover {
+.file-upload-label:hover:not(.uploading) {
   background: rgba(0, 188, 212, 0.2);
+}
+
+.file-upload-label.uploading {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .upload-progress {
@@ -345,6 +425,11 @@
   cursor: pointer;
   font-size: 16px;
   padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.remove-attachment:hover {
+  color: #c62828;
 }
 
 .form-footer {
@@ -367,8 +452,13 @@
   transition: all 0.3s ease;
 }
 
-.btn-cancel:hover {
+.btn-cancel:hover:not(:disabled) {
   background: rgba(255,255,255,0.1);
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-save {
@@ -391,6 +481,7 @@
 .btn-save:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* ===== FILTERS ===== */
@@ -447,6 +538,11 @@
   border-color: #00bcd4;
 }
 
+.search-input::placeholder {
+  color: var(--text-muted, #8892a8);
+  opacity: 0.6;
+}
+
 .filter-info {
   font-size: 13px;
   color: var(--text-muted, #8892a8);
@@ -455,6 +551,18 @@
 .create-hint {
   color: var(--text-muted, #8892a8);
   opacity: 0.6;
+}
+
+.full-access-hint {
+  color: #9b59b6 !important;
+}
+
+.manage-own-hint {
+  color: #00bcd4 !important;
+}
+
+.read-only-hint {
+  color: var(--text-muted, #8892a8) !important;
 }
 
 /* ===== ANNOUNCEMENTS LIST ===== */
@@ -565,6 +673,14 @@
   color: white;
 }
 
+.own-tag {
+  font-size: 9px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: rgba(0, 188, 212, 0.1);
+  color: #00bcd4;
+}
+
 .announcement-meta {
   display: flex;
   align-items: center;
@@ -600,8 +716,8 @@
 }
 
 .category-tag,
-.target-tag,
-.expiry-tag {
+.expiry-tag,
+.author-tag {
   font-size: 11px;
   padding: 2px 10px;
   border-radius: 12px;
@@ -836,6 +952,10 @@
   margin: 0 0 8px 0;
 }
 
+.attachment-image-wrapper {
+  text-align: center;
+}
+
 .attachment-image {
   max-width: 100%;
   max-height: 300px;
@@ -862,6 +982,30 @@
   margin-top: 12px;
   font-size: 13px;
   color: var(--text-muted, #8892a8);
+}
+
+.preview-full-access-info {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(155, 89, 182, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #9b59b6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preview-own-info {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 188, 212, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #00bcd4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .modal-footer {
@@ -915,6 +1059,10 @@
   gap: 8px;
 }
 
+.announcements-footer p {
+  margin: 0;
+}
+
 .announcements-footer code {
   background: rgba(255,255,255,0.05);
   padding: 2px 8px;
@@ -926,8 +1074,24 @@
   color: var(--text-muted, #8892a8);
 }
 
-.footer-permission {
+.footer-full-access {
+  color: #9b59b6;
+}
+
+.footer-manage-own {
+  color: #00bcd4;
+}
+
+.footer-read-only {
+  color: var(--text-muted, #8892a8);
+}
+
+.footer-attachment {
   color: #4caf50;
+}
+
+.footer-school-name {
+  color: var(--text-muted, #8892a8);
 }
 
 /* ===== LOADING ===== */
@@ -991,111 +1155,407 @@
   background: rgba(244, 67, 54, 0.25);
 }
 
+/* ============================================================ */
 /* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-  .announcements-container {
-    padding: 12px;
-  }
-  
+/* ============================================================ */
+
+@media (max-width: 992px) {
   .announcements-header {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .announcements-container {
+    padding: 12px;
+  }
+
+  .announcements-school-name-marquee {
+    font-size: 13px;
+    max-width: 280px;
+  }
+
+  .announcements-header {
+    padding: 12px 16px;
+  }
+
+  .announcements-header .header-left h1 {
+    font-size: 20px;
+  }
+
   .header-actions {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .header-actions button {
     width: 100%;
     justify-content: center;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .filter-group {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .filter-select,
   .search-wrapper {
     width: 100%;
   }
-  
+
   .announcement-card {
     flex-direction: column;
     padding: 12px 16px;
   }
-  
+
   .announcement-status {
     flex-direction: row;
     min-width: 0;
   }
-  
+
   .announcement-header {
     flex-direction: column;
   }
-  
+
   .announcement-meta {
     font-size: 11px;
     gap: 8px;
   }
-  
+
   .announcement-actions {
     align-self: flex-end;
   }
-  
+
   .modal-box {
     max-width: 100%;
     max-height: 95vh;
     margin: 10px;
     border-radius: 12px;
   }
-  
+
   .modal-header {
     padding: 16px;
   }
-  
+
   .modal-body {
     padding: 16px;
   }
-  
+
   .modal-footer {
     flex-direction: column;
   }
-  
+
   .modal-footer button {
     width: 100%;
     justify-content: center;
   }
-  
+
   .target-roles-grid {
     flex-direction: column;
   }
-  
+
   .announcements-footer {
     flex-direction: column;
     text-align: center;
   }
+
+  .announcements-footer p {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
 }
 
 @media (max-width: 480px) {
+  .announcements-school-name-marquee {
+    font-size: 11px;
+    max-width: 180px;
+  }
+
+  .announcements-container {
+    padding: 8px;
+  }
+
+  .announcements-header {
+    padding: 10px 12px;
+  }
+
+  .announcements-header .header-left h1 {
+    font-size: 17px;
+  }
+
+  .announcements-header .header-subtitle {
+    font-size: 12px;
+  }
+
   .announcement-title-wrapper {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .priority-badge {
     font-size: 9px;
     padding: 1px 8px;
   }
-  
+
   .preview-meta {
     flex-direction: column;
     gap: 4px;
+  }
+
+  .form-body {
+    padding: 12px;
+  }
+
+  .form-footer {
+    flex-direction: column;
+  }
+
+  .form-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-create-announcement,
+  .btn-mark-all-read {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .filter-info {
+    font-size: 11px;
+  }
+
+  .modal-title-wrapper h2 {
+    font-size: 16px;
+  }
+
+  .preview-content {
+    font-size: 13px;
+  }
+
+  .attachment-image {
+    max-height: 200px;
+  }
+}
+
+/* ============================================================ */
+/* ===== LIGHT MODE SUPPORT ===== */
+/* ============================================================ */
+
+@media (prefers-color-scheme: light) {
+  .announcements-container {
+    background: #f5f7fa;
+    color: #1a1a2e;
+  }
+
+  .announcements-header {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .announcements-header .header-left h1 {
+    color: #1a1a2e;
+  }
+
+  .announcements-header .header-subtitle {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .announcements-header .role-badge {
+    background: rgba(0, 188, 212, 0.1);
+    color: #00838f;
+  }
+
+  .announcement-form-container {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .form-header {
+    background: rgba(0, 188, 212, 0.05);
+  }
+
+  .form-header h3 {
+    color: #1a1a2e;
+  }
+
+  .form-group label {
+    color: rgba(0,0,0,0.6);
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1a1a2e;
+  }
+
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+    border-color: #00838f;
+  }
+
+  .form-hint {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .filter-select,
+  .search-input {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1a1a2e;
+  }
+
+  .filter-select:focus,
+  .search-input:focus {
+    border-color: #00838f;
+  }
+
+  .filter-info {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .announcement-card {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .announcement-card:hover {
+    background: #f8f9fa;
+  }
+
+  .announcement-title {
+    color: #1a1a2e;
+  }
+
+  .preview-text {
+    color: rgba(0,0,0,0.6);
+  }
+
+  .announcement-footer .category-tag,
+  .announcement-footer .expiry-tag,
+  .announcement-footer .author-tag {
+    background: rgba(0,0,0,0.05);
+    color: rgba(0,0,0,0.4);
+  }
+
+  .modal-box {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .modal-title-wrapper h2 {
+    color: #1a1a2e;
+  }
+
+  .preview-content {
+    color: rgba(0,0,0,0.7);
+  }
+
+  .preview-meta {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .empty-state {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .empty-state h3 {
+    color: #1a1a2e;
+  }
+
+  .empty-state p {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .announcements-footer {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .announcements-footer code {
+    background: rgba(0,0,0,0.05);
+  }
+
+  .announcements-school-name-marquee {
+    color: #00838f;
+  }
+
+  .announcements-school-name-underline {
+    background: linear-gradient(90deg, transparent, #00838f, transparent);
+  }
+
+  .full-access-hint {
+    color: #7b1fa2 !important;
+  }
+
+  .manage-own-hint {
+    color: #00838f !important;
+  }
+
+  .footer-full-access {
+    color: #7b1fa2;
+  }
+
+  .footer-manage-own {
+    color: #00838f;
+  }
+
+  .footer-school-name {
+    color: rgba(0,0,0,0.2);
+  }
+
+  .file-upload-label {
+    color: #00838f;
+    border-color: rgba(0, 131, 143, 0.3);
+  }
+
+  .file-upload-label:hover:not(.uploading) {
+    background: rgba(0, 188, 212, 0.15);
+  }
+
+  .btn-cancel {
+    color: rgba(0,0,0,0.5);
+    border-color: rgba(0,0,0,0.08);
+  }
+
+  .btn-cancel:hover:not(:disabled) {
+    background: rgba(0,0,0,0.05);
+  }
+
+  .attachment-link {
+    background: rgba(0, 188, 212, 0.08);
+    color: #00838f;
+  }
+
+  .attachment-link:hover {
+    background: rgba(0, 188, 212, 0.15);
+  }
+
+  .preview-full-access-info {
+    background: rgba(155, 89, 182, 0.08);
+    color: #7b1fa2;
+  }
+
+  .preview-own-info {
+    background: rgba(0, 188, 212, 0.08);
+    color: #00838f;
   }
 }

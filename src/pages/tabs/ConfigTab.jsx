@@ -15,6 +15,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './ConfigTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -34,6 +36,7 @@ const ConfigTab = ({ user }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // ========== STATE UNTUK JAM MASUK/PULANG & HARI LIBUR ==========
   const [checkInTime, setCheckInTime] = useState('07:00');
@@ -92,6 +95,7 @@ const ConfigTab = ({ user }) => {
     }
 
     let isMounted = true;
+    isMountedRef.current = true;
 
     // Ambil nama sekolah
     const schoolNameRef = ref(db, 'system_config/schoolName');
@@ -171,6 +175,7 @@ const ConfigTab = ({ user }) => {
 
     return () => {
       isMounted = false;
+      isMountedRef.current = false;
       unsubscribeName();
       unsubscribeLogo();
       unsubscribeConfig();
@@ -775,6 +780,15 @@ const ConfigTab = ({ user }) => {
   return (
     <div className="config-container">
       <div className="config-header">
+        {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+        <div className="config-school-name-wrapper">
+          <MarqueeText 
+            text={schoolName || 'Sistem Absensi'} 
+            speed={30}
+            className="config-school-name-marquee"
+          />
+          <div className="config-school-name-underline"></div>
+        </div>
         <h1>⚙️ Pengaturan</h1>
         <p className="config-subtitle">Kelola konfigurasi sistem sekolah</p>
       </div>
@@ -1223,6 +1237,7 @@ const ConfigTab = ({ user }) => {
         <p className="config-reminder-status">
           🔔 Pengingat: {reminderEnabled ? '✅ Aktif' : '❌ Nonaktif'}
         </p>
+        <p className="config-school-name-footer">🏫 {schoolName}</p>
       </div>
     </div>
   );

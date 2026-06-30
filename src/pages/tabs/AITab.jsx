@@ -2,6 +2,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ref, onValue, set, remove, update, get } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './AITab.css';
 
 // API Base URL
@@ -203,6 +205,9 @@ const AITab = ({ user }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isTyping, setIsTyping] = useState(false);
 
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
+
   // Data cache untuk action
   const [studentsCache, setStudentsCache] = useState([]);
   const [staffCache, setStaffCache] = useState([]);
@@ -212,6 +217,7 @@ const AITab = ({ user }) => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // ==================== ROLE PERMISSIONS ====================
   const rawRole = user?.role || 'siswa';
@@ -228,6 +234,54 @@ const AITab = ({ user }) => {
   const isFullAccess = isDeveloper || isAdmin || isWakilKepala;
   const canDeleteData = isDeveloper || isAdmin;
   const canManageAttendance = isFullAccess || isGuru || isStaff;
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [AITab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [AITab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [AITab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [AITab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== DETEKSI MOBILE ====================
   useEffect(() => {
@@ -270,13 +324,13 @@ const AITab = ({ user }) => {
 
   // ==================== SYSTEM PROMPT ====================
   const getSystemPrompt = useCallback(() => {
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const userRole = user?.role || 'user';
     const userName = user?.nama || 'User';
     const userKelas = user?.kelas || '';
     const userJurusan = user?.jurusan || '';
 
-    return `Anda adalah asisten AI untuk sistem manajemen sekolah bernama "${schoolName}". 
+    return `Anda adalah asisten AI untuk sistem manajemen sekolah bernama "${schoolNameText}". 
 Anda membantu guru, staff, dan admin dalam berbagai tugas sekolah.
 
 Informasi pengguna:
@@ -308,7 +362,7 @@ Panduan:
 5. Gunakan format yang rapi dengan poin-poin jika diperlukan
 
 Anda adalah asisten yang ramah dan profesional. Selalu utamakan membantu pengguna dengan sebaik-baiknya.`;
-  }, [user]);
+  }, [user, schoolName]);
 
   // ==================== LOAD DATA FOR ACTIONS ====================
   useEffect(() => {
@@ -1378,6 +1432,15 @@ Anda adalah asisten yang ramah dan profesional. Selalu utamakan membantu penggun
       {/* ===== HEADER ===== */}
       <div className="ai-header">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="ai-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="ai-school-name-marquee"
+            />
+            <div className="ai-school-name-underline"></div>
+          </div>
           <h1>🤖 AI Assistant</h1>
           <p className="header-subtitle">
             Asisten AI dengan kemampuan manajemen data & fuzzy search
@@ -1423,6 +1486,9 @@ Anda adalah asisten yang ramah dan profesional. Selalu utamakan membantu penggun
           color: aiProvider === 'groq' ? '#00bcd4' : '#9b59b6'
         }}>
           🧠 {aiProvider === 'groq' ? 'GROQ' : 'OpenAI'}
+        </span>
+        <span className="ai-school-badge">
+          🏫 {schoolName || 'Sistem Absensi'}
         </span>
       </div>
 
@@ -1602,6 +1668,7 @@ Anda adalah asisten yang ramah dan profesional. Selalu utamakan membantu penggun
           {isFullAccess && <span className="footer-full-access"> • 🔓 Full Access</span>}
           {canDeleteData && <span className="footer-delete"> • 🗑️ Dapat menghapus data</span>}
           <span className="footer-fuzzy"> • 🧠 Fuzzy Search Aktif</span>
+          <span className="footer-school"> • 🏫 {schoolName || 'Sistem Absensi'}</span>
         </p>
       </div>
     </div>

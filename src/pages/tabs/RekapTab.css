@@ -1,5 +1,53 @@
 /* src/pages/tabs/RekapTab.css - VERSI MOBILE OPTIMIZED */
 
+/* ===== MARQUEE TEXT STYLES ===== */
+.rekap-school-name-wrapper {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 2px;
+}
+
+.rekap-school-name-marquee {
+  width: 100%;
+  max-width: 500px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4caf50;
+  letter-spacing: 0.5px;
+}
+
+.rekap-school-name-marquee .marquee-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.rekap-school-name-marquee .marquee-content {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 2px 0;
+}
+
+.rekap-school-name-marquee .marquee-separator {
+  color: rgba(76, 175, 80, 0.2);
+  margin: 0 8px;
+}
+
+.rekap-school-name-underline {
+  display: block;
+  width: 40%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4caf50, transparent);
+  border-radius: 2px;
+  margin-top: 2px;
+  transition: width 0.3s ease;
+}
+
+.rekap-school-name-wrapper:hover .rekap-school-name-underline {
+  width: 60%;
+}
+
+/* ===== CONTAINER ===== */
 .rekap-container-mobile {
   padding: 10px;
   background: var(--bg-primary, #1a1a2e);
@@ -80,19 +128,28 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.rekap-header-mobile .header-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .rekap-header-mobile .header-left h1 {
   font-size: 16px;
   font-weight: 700;
-  margin: 0;
+  margin: 2px 0 2px 0;
   color: #4caf50;
 }
 
 .rekap-header-mobile .header-subtitle {
   font-size: 11px;
   color: rgba(255,255,255,0.5);
-  margin: 2px 0 0 0;
+  margin: 0;
 }
 
 .header-actions-mobile {
@@ -431,6 +488,12 @@
   font-size: 9px;
 }
 
+.school-label-mobile {
+  color: #4caf50;
+  font-size: 9px;
+  font-weight: 500;
+}
+
 .search-result-mobile {
   color: #4caf50;
 }
@@ -605,6 +668,11 @@
 
 .footer-total-mobile {
   color: rgba(255,255,255,0.4);
+}
+
+.footer-school {
+  color: #4caf50;
+  opacity: 0.7;
 }
 
 /* ==================== MODAL DETAIL - MOBILE OPTIMIZED ==================== */
@@ -823,7 +891,9 @@
   border-top: 1px solid rgba(255,255,255,0.06);
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .btn-close-modal-mobile {
@@ -839,6 +909,21 @@
 
 .btn-close-modal-mobile:hover {
   background: rgba(255,255,255,0.18);
+}
+
+.btn-print-detail-mobile {
+  padding: 6px 20px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.btn-print-detail-mobile:hover {
+  background: rgba(76, 175, 80, 0.35);
 }
 
 /* ==================== ANIMATIONS ==================== */
@@ -886,6 +971,11 @@
 
 /* Mobile Very Small */
 @media (max-width: 360px) {
+  .rekap-school-name-marquee {
+    font-size: 11px;
+    max-width: 160px;
+  }
+
   .stats-cards-mobile {
     grid-template-columns: repeat(2, 1fr);
     gap: 3px;
@@ -955,10 +1045,19 @@
   .rekap-header-mobile .header-left h1 {
     font-size: 14px;
   }
+
+  .rekap-info-mobile .school-label-mobile {
+    font-size: 8px;
+  }
 }
 
 /* Mobile Small */
 @media (max-width: 480px) {
+  .rekap-school-name-marquee {
+    font-size: 12px;
+    max-width: 200px;
+  }
+
   .stats-cards-mobile {
     grid-template-columns: repeat(3, 1fr);
     gap: 4px;
@@ -1087,10 +1186,29 @@
   .period-label-mobile {
     font-size: 8px;
   }
+
+  .school-label-mobile {
+    font-size: 8px;
+  }
+
+  .modal-footer-mobile {
+    flex-direction: column;
+  }
+
+  .btn-close-modal-mobile,
+  .btn-print-detail-mobile {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* Tablet */
 @media (min-width: 600px) and (max-width: 1024px) {
+  .rekap-school-name-marquee {
+    font-size: 14px;
+    max-width: 350px;
+  }
+
   .stats-cards-mobile {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
@@ -1143,10 +1261,24 @@
   .sort-controls-mobile {
     width: auto;
   }
+
+  .rekap-header-mobile {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .header-actions-mobile {
+    width: auto;
+  }
 }
 
 /* Desktop */
 @media (min-width: 1025px) {
+  .rekap-school-name-marquee {
+    font-size: 16px;
+    max-width: 500px;
+  }
+
   .rekap-container-mobile {
     padding: 20px;
     max-width: 1400px;
@@ -1216,11 +1348,298 @@
   .modal-stats-mobile {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  .rekap-header-mobile {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .header-actions-mobile {
+    width: auto;
+  }
 }
 
 /* Dark mode support for input date picker */
 @media (prefers-color-scheme: dark) {
   .date-input-mobile::-webkit-calendar-picker-indicator {
     filter: invert(1);
+  }
+}
+
+/* ============================================================ */
+/* ===== LIGHT MODE SUPPORT ===== */
+/* ============================================================ */
+
+@media (prefers-color-scheme: light) {
+  .rekap-school-name-marquee {
+    color: #2e7d32;
+  }
+
+  .rekap-school-name-underline {
+    background: linear-gradient(90deg, transparent, #2e7d32, transparent);
+  }
+
+  .rekap-container-mobile {
+    background: #f5f7fa;
+    color: #1a1a2e;
+  }
+
+  .rekap-header-mobile {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .rekap-header-mobile .header-left h1 {
+    color: #2e7d32;
+  }
+
+  .rekap-header-mobile .header-subtitle {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .stat-card-mobile {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .stat-number-mobile {
+    color: #1a1a2e;
+  }
+
+  .progress-container-mobile {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .progress-label-mobile {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .filter-container-mobile {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .filter-group-mobile select {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1a1a2e;
+  }
+
+  .filter-group-mobile select option {
+    background: #ffffff;
+    color: #1a1a2e;
+  }
+
+  .date-input-mobile {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1a1a2e;
+  }
+
+  .date-input-mobile::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+  }
+
+  .search-input-mobile {
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1a1a2e;
+  }
+
+  .search-input-mobile::placeholder {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .search-clear-mobile {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .search-clear-mobile:hover {
+    color: #1a1a2e;
+  }
+
+  .rekap-table-container-mobile {
+    background: rgba(0,0,0,0.02);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .rekap-table-mobile thead th {
+    color: rgba(0,0,0,0.4);
+    border-bottom: 2px solid rgba(0,0,0,0.08);
+  }
+
+  .rekap-table-mobile thead th.sortable:hover {
+    color: #1a1a2e;
+  }
+
+  .rekap-table-mobile tbody td {
+    color: rgba(0,0,0,0.6);
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .rekap-table-mobile tbody tr:hover {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .student-name-cell {
+    color: #1a1a2e;
+  }
+
+  .rekap-info-mobile {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .period-label-mobile {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .school-label-mobile {
+    color: #2e7d32;
+  }
+
+  .btn-detail-mobile {
+    background: rgba(0, 188, 212, 0.08);
+    color: #00838f;
+  }
+
+  .btn-detail-mobile:hover {
+    background: rgba(0, 188, 212, 0.2);
+  }
+
+  .modal-box-mobile {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .modal-header-mobile {
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .modal-header-mobile h3 {
+    color: #1a1a2e;
+  }
+
+  .modal-close-mobile {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .modal-close-mobile:hover {
+    color: #1a1a2e;
+  }
+
+  .modal-student-info-mobile {
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .modal-name-mobile {
+    color: #1a1a2e;
+  }
+
+  .modal-id-mobile {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .modal-class-mobile {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .modal-stat-item {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .modal-stat-item .modal-stat-number {
+    color: #1a1a2e;
+  }
+
+  .modal-stat-item.stat-hadir .modal-stat-number {
+    color: #2e7d32;
+  }
+
+  .modal-stat-item.stat-sakit .modal-stat-number {
+    color: #e65100;
+  }
+
+  .modal-stat-item.stat-izin .modal-stat-number {
+    color: #0d47a1;
+  }
+
+  .modal-stat-item.stat-alpha .modal-stat-number {
+    color: #c62828;
+  }
+
+  .modal-stat-item.stat-persen .modal-stat-number {
+    color: #00838f;
+  }
+
+  .modal-details-scroll {
+    background: rgba(0,0,0,0.02);
+  }
+
+  .modal-detail-date {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .modal-detail-day {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .modal-detail-time {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .modal-footer-mobile {
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .btn-close-modal-mobile {
+    background: rgba(0,0,0,0.06);
+    color: #1a1a2e;
+  }
+
+  .btn-close-modal-mobile:hover {
+    background: rgba(0,0,0,0.12);
+  }
+
+  .btn-print-detail-mobile {
+    background: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+  }
+
+  .btn-print-detail-mobile:hover {
+    background: rgba(46, 125, 50, 0.2);
+  }
+
+  .rekap-footer-mobile .footer-info-mobile {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .footer-school {
+    color: #2e7d32;
+  }
+
+  .empty-state-mobile h3 {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .empty-state-mobile p {
+    color: rgba(0,0,0,0.3);
+  }
+
+  .loading-state p {
+    color: rgba(0,0,0,0.4);
+  }
+
+  .loading-spinner {
+    border-color: rgba(0,0,0,0.1);
+    border-top-color: #2e7d32;
+  }
+
+  .btn-retry {
+    background: #2e7d32;
+  }
+
+  .btn-retry:hover {
+    background: #1b5e20;
   }
 }

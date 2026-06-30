@@ -10,6 +10,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './AnnouncementsTab.css';
 
 // API Base URL
@@ -20,6 +22,9 @@ const AnnouncementsTab = ({ user }) => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
   
   // State untuk form
   const [showForm, setShowForm] = useState(false);
@@ -57,6 +62,7 @@ const AnnouncementsTab = ({ user }) => {
   // Refs
   const fileInputRef = useRef(null);
   const formRef = useRef(null);
+  const isMounted = useRef(true);
   
   // ==================== ROLE PERMISSIONS ====================
   const rawRole = user?.role || 'siswa';
@@ -92,7 +98,35 @@ const AnnouncementsTab = ({ user }) => {
     if (canManageOwn && announcement?.createdBy === user?.uid) return true;
     return false;
   };
-  
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    const schoolInfoRef = ref(db, 'school_info');
+    const unsubscribeSchoolInfo = onValue(schoolInfoRef, (snapshot) => {
+      if (!isMounted.current) return;
+      const data = snapshot.val();
+      if (data && data.name) {
+        setSchoolName(data.name);
+      } else {
+        // Fallback ke school_config jika ada
+        const configRef = ref(db, 'school_config');
+        onValue(configRef, (configSnapshot) => {
+          if (!isMounted.current) return;
+          const configData = configSnapshot.val();
+          if (configData && configData.schoolName) {
+            setSchoolName(configData.schoolName);
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      unsubscribeSchoolInfo();
+    };
+  }, []);
+
   // ==================== TOKEN MANAGEMENT ====================
   const getAuthToken = useCallback(async () => {
     let token = localStorage.getItem('authToken');
@@ -798,6 +832,15 @@ const AnnouncementsTab = ({ user }) => {
       {/* ===== HEADER ===== */}
       <div className="announcements-header">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="announcements-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="announcements-school-name-marquee"
+            />
+            <div className="announcements-school-name-underline"></div>
+          </div>
           <h1>📢 Pengumuman</h1>
           <p className="header-subtitle">
             Informasi dan pengumuman penting
@@ -1457,6 +1500,7 @@ const AnnouncementsTab = ({ user }) => {
           {formData.attachmentUrl && (
             <span className="footer-attachment"> • 📎 Ada lampiran</span>
           )}
+          <span className="footer-school-name" style={{ color: 'var(--text-muted)' }}> • 🏫 {schoolName}</span>
         </p>
       </div>
     </div>

@@ -10,6 +10,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './ProfileTab.css';
 
 // Konfigurasi API
@@ -37,6 +39,9 @@ const ProfileTab = ({ user }) => {
   const [oldPhotoUrl, setOldPhotoUrl] = useState('');
   const fileInputRef = useRef(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
   
   // State untuk ubah password
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -281,6 +286,54 @@ const ProfileTab = ({ user }) => {
       }
     }
   }, [user]);
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [ProfileTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [ProfileTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [ProfileTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [ProfileTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== SETUP REAL-TIME LISTENER ====================
   useEffect(() => {
@@ -797,6 +850,15 @@ const ProfileTab = ({ user }) => {
       {/* Header */}
       <div className="profile-header">
         <div className="profile-header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="profile-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="profile-school-name-marquee"
+            />
+            <div className="profile-school-name-underline"></div>
+          </div>
           <h1>👤 Profil Pengguna</h1>
           <p className="profile-subtitle">
             {isSiswa ? 'Kelola foto profil Anda' : 'Kelola informasi profil Anda'}
@@ -1236,6 +1298,17 @@ const ProfileTab = ({ user }) => {
             ✅ Data berhasil disimpan!
           </p>
         )}
+        {/* ⭐ TAMPILAN NAMA SEKOLAH DI FOOTER */}
+        <p className="footer-info footer-school-name" style={{ 
+          fontSize: '11px', 
+          color: 'var(--text-muted)', 
+          marginTop: '4px',
+          borderTop: '1px solid var(--border)',
+          paddingTop: '8px',
+          opacity: 0.6
+        }}>
+          🏫 {schoolName || 'Sistem Absensi'} • v6.6
+        </p>
       </div>
     </div>
   );

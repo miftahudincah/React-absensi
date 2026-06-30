@@ -11,6 +11,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './IzinTab.css';
 
 // API Base URL
@@ -244,6 +246,9 @@ const IzinTab = ({ user }) => {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
+  
   // State untuk form izin
   const [formData, setFormData] = useState({
     type: 'sakit',
@@ -257,6 +262,55 @@ const IzinTab = ({ user }) => {
 
   // Refs
   const fileInputRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [IzinTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [IzinTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [IzinTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [IzinTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== TOAST ====================
   const showToast = (message, type = 'success') => {
@@ -764,6 +818,15 @@ const IzinTab = ({ user }) => {
       {/* Header */}
       <div className="izin-header">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="izin-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="izin-school-name-marquee"
+            />
+            <div className="izin-school-name-underline"></div>
+          </div>
           <h3>📝 Izin Online</h3>
           <p className="header-subtitle">Ajukan izin sakit/keperluan keluarga secara online</p>
         </div>
@@ -1174,6 +1237,24 @@ const IzinTab = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* ===== FOOTER ===== */}
+      <div className="izin-footer">
+        <p>
+          📝 Izin Online
+          <span className="footer-role"> • Role: {
+            isSiswaUser ? 'Siswa' :
+            isStaffUser ? 'Staff' :
+            isFullAccessUser ? 'Admin/Developer' :
+            'User'
+          }</span>
+          <span className="footer-school"> • 🏫 {schoolName || 'Sistem Absensi'}</span>
+          {pendingCount > 0 && (
+            <span className="footer-pending"> • ⏳ {pendingCount} menunggu</span>
+          )}
+          <span className="footer-auto"> • 🤖 Auto-absensi aktif</span>
+        </p>
+      </div>
     </div>
   );
 };

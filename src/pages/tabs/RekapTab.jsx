@@ -10,6 +10,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './RekapTab.css';
 
 const RekapTab = ({ user }) => {
@@ -22,6 +24,9 @@ const RekapTab = ({ user }) => {
   const [filterJurusan, setFilterJurusan] = useState('all');
   const [kelasOptions, setKelasOptions] = useState(['all']);
   const [jurusanOptions, setJurusanOptions] = useState(['all']);
+  
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
   
   // State untuk periode
   const [periodType, setPeriodType] = useState('minggu');
@@ -57,6 +62,54 @@ const RekapTab = ({ user }) => {
   const isFullAccess = ['developer', 'admin', 'wakil_kepala'].includes(role);
   const isStaff = ['guru', 'staff_tu'].includes(role);
   const canExport = isFullAccess || isStaff || isDeveloper;
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [RekapTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [RekapTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [RekapTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [RekapTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== FUNGSI FOTO PROFIL ====================
   const getStudentPhoto = useCallback((studentId, studentName) => {
@@ -533,13 +586,13 @@ const RekapTab = ({ user }) => {
     setExportLoading(true);
     
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
       
       let csv = '\uFEFF';
       csv += `"REKAPITULASI ABSENSI SISWA"\n`;
-      csv += `"${schoolName}"\n`;
+      csv += `"${schoolNameText}"\n`;
       csv += `"Periode: ${periodLabel}"\n`;
       csv += `"Filter Kelas: ${filterKelas === 'all' ? 'Semua' : filterKelas}"\n`;
       csv += `"Filter Jurusan: ${filterJurusan === 'all' ? 'Semua' : filterJurusan}"\n`;
@@ -616,7 +669,7 @@ const RekapTab = ({ user }) => {
     setExportLoading(true);
     
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
       const roleName = user?.nama || user?.email || 'Admin';
@@ -633,7 +686,7 @@ const RekapTab = ({ user }) => {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Rekap Absensi Siswa - ${schoolName}</title>
+          <title>Rekap Absensi Siswa - ${schoolNameText}</title>
           <meta charset="UTF-8">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -662,7 +715,7 @@ const RekapTab = ({ user }) => {
         <body>
           <div class="header">
             <h1>📊 REKAPITULASI ABSENSI SISWA</h1>
-            <p>${schoolName}</p>
+            <p>${schoolNameText}</p>
           </div>
           <div class="info">
             <span><span class="label">📅 Periode:</span> <span class="value">${periodLabel}</span></span>
@@ -831,6 +884,15 @@ const RekapTab = ({ user }) => {
       {/* Header */}
       <div className="rekap-header-mobile">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="rekap-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="rekap-school-name-marquee"
+            />
+            <div className="rekap-school-name-underline"></div>
+          </div>
           <h1>📊 Rekap Absensi Siswa</h1>
           <p className="header-subtitle">Rekapitulasi kehadiran siswa per periode</p>
         </div>
@@ -980,6 +1042,7 @@ const RekapTab = ({ user }) => {
         <div className="rekap-info-mobile">
           <span>📊 Menampilkan {sortedRekap.length} dari {rekapData.length} siswa</span>
           <span className="period-label-mobile">📅 {periodLabel}</span>
+          <span className="school-label-mobile">🏫 {schoolName}</span>
         </div>
 
         {sortedRekap.length === 0 ? (
@@ -1079,6 +1142,7 @@ const RekapTab = ({ user }) => {
           <span className="footer-period-mobile"> • 📅 {periodLabel}</span>
           <span className="footer-total-mobile"> • 👥 {stats.totalSiswa} siswa</span>
           <span className="footer-hadir-mobile"> • ✅ {stats.hadir} hadir</span>
+          <span className="footer-school"> • 🏫 {schoolName}</span>
         </p>
       </div>
 
@@ -1186,7 +1250,7 @@ const RekapTab = ({ user }) => {
                       return;
                     }
                     
-                    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+                    const schoolNameText = schoolName || 'Sistem Absensi';
                     let detailHtml = `
                       <!DOCTYPE html>
                       <html>
@@ -1207,7 +1271,7 @@ const RekapTab = ({ user }) => {
                       <body>
                         <div class="header">
                           <h1>📋 Detail Rekap Absensi</h1>
-                          <p>${schoolName}</p>
+                          <p>${schoolNameText}</p>
                         </div>
                         <div class="info">
                           <p><strong>Nama:</strong> ${selectedStudent.nama}</p>
@@ -1243,6 +1307,7 @@ const RekapTab = ({ user }) => {
                         <div class="footer">
                           <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}</p>
                           <p>Sistem Absensi IoT</p>
+                          <p>🏫 ${schoolNameText}</p>
                         </div>
                         <div style="text-align:center; margin-top:20px;">
                           <button onclick="window.print()" style="padding:10px 24px; background:#4caf50; color:white; border:none; border-radius:6px; cursor:pointer;">🖨️ Cetak</button>

@@ -15,6 +15,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './AttendanceTab.css';
 
 // Register ChartJS components
@@ -65,6 +67,9 @@ const AttendanceTab = ({ user }) => {
     workDays: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false },
     holidays: []
   });
+
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
 
   // Refs untuk mencegah unmount issues
   const isMounted = useRef(true);
@@ -271,7 +276,7 @@ const AttendanceTab = ({ user }) => {
       return { success: false, error: 'No phone number' };
     }
 
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const dateStr = new Date().toLocaleDateString('id-ID', { 
       weekday: 'long', 
       year: 'numeric', 
@@ -279,7 +284,7 @@ const AttendanceTab = ({ user }) => {
       day: 'numeric' 
     });
 
-    const message = `*📋 NOTIFIKASI ABSENSI MASUK - ${schoolName}*
+    const message = `*📋 NOTIFIKASI ABSENSI MASUK - ${schoolNameText}*
 
 👨‍🎓 *Siswa:* ${student.nama}
 🆔 *ID:* ${student.id || student.fpId || '-'}
@@ -306,7 +311,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
     }
 
     return result;
-  }, [getStudentPhoneNumber, sendWhatsAppNotification, user]);
+  }, [getStudentPhoneNumber, sendWhatsAppNotification, user, schoolName]);
 
   const sendCheckOutNotification = useCallback(async (student, timeIn, timeOut) => {
     const phoneNumber = getStudentPhoneNumber(student);
@@ -314,7 +319,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
       return { success: false, error: 'No phone number' };
     }
 
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const dateStr = new Date().toLocaleDateString('id-ID', { 
       weekday: 'long', 
       year: 'numeric', 
@@ -322,7 +327,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
       day: 'numeric' 
     });
 
-    const message = `*🏠 NOTIFIKASI ABSENSI PULANG - ${schoolName}*
+    const message = `*🏠 NOTIFIKASI ABSENSI PULANG - ${schoolNameText}*
 
 👨‍🎓 *Siswa:* ${student.nama}
 🆔 *ID:* ${student.id || student.fpId || '-'}
@@ -351,7 +356,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
     }
 
     return result;
-  }, [getStudentPhoneNumber, sendWhatsAppNotification, user]);
+  }, [getStudentPhoneNumber, sendWhatsAppNotification, user, schoolName]);
 
   const sendReminderNotification = useCallback(async (student) => {
     const phoneNumber = getStudentPhoneNumber(student);
@@ -359,7 +364,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
       return { success: false, error: 'No phone number' };
     }
 
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const dateStr = new Date().toLocaleDateString('id-ID', { 
       weekday: 'long', 
       year: 'numeric', 
@@ -368,7 +373,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
     });
     const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-    const message = `*🔔 PENGINGAT ABSENSI - ${schoolName}*
+    const message = `*🔔 PENGINGAT ABSENSI - ${schoolNameText}*
 
 👨‍🎓 *Siswa:* ${student.nama}
 🆔 *ID:* ${student.id || student.fpId || '-'}
@@ -397,7 +402,7 @@ Segera lakukan absensi melalui sistem.
     }
 
     return result;
-  }, [getStudentPhoneNumber, sendWhatsAppNotification, user]);
+  }, [getStudentPhoneNumber, sendWhatsAppNotification, user, schoolName]);
 
   // ==================== CHECK IN / CHECK OUT FUNCTIONS ====================
   
@@ -1017,6 +1022,22 @@ Segera lakukan absensi melalui sistem.
       }
     });
 
+    // Ambil nama sekolah dari school_config
+    const schoolInfoRef = ref(db, 'school_info');
+    const unsubscribeSchoolInfo = onValue(schoolInfoRef, (snapshot) => {
+      if (!isMounted.current) return;
+      const data = snapshot.val();
+      if (data && data.name) {
+        setSchoolName(data.name);
+      } else {
+        // Fallback ke school_config jika ada
+        const configData = schoolConfig;
+        if (configData && configData.schoolName) {
+          setSchoolName(configData.schoolName);
+        }
+      }
+    });
+
     // Ambil data absensi
     const attendanceRef = ref(db, 'absensi');
     const unsubscribeAttendance = onValue(attendanceRef, (snapshot) => {
@@ -1069,6 +1090,7 @@ Segera lakukan absensi melalui sistem.
       unsubscribeUsers();
       unsubscribeUsersAuth();
       unsubscribeConfig();
+      unsubscribeSchoolInfo();
       unsubscribeAttendance();
     };
   }, []);
@@ -1613,14 +1635,14 @@ Segera lakukan absensi melalui sistem.
     setExportLoading(true);
 
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
       const periodText = filterDate === 'all' ? 'Semua Data' : (filterDate === 'today' ? 'Hari Ini' : filterDate);
 
       let csv = '\uFEFF';
       csv += `"LAPORAN ABSENSI SISWA"\n`;
-      csv += `"${schoolName}"\n`;
+      csv += `"${schoolNameText}"\n`;
       csv += `"Periode: ${periodText}"\n`;
       csv += `"Filter Kelas: ${filterKelas === 'all' ? 'Semua' : filterKelas}"\n`;
       csv += `"Filter Jurusan: ${filterJurusan === 'all' ? 'Semua' : filterJurusan}"\n`;
@@ -1667,13 +1689,13 @@ Segera lakukan absensi melalui sistem.
     } finally {
       setExportLoading(false);
     }
-  }, [filterDate, filterKelas, filterJurusan, filteredData, students, getStudentPhoneNumber, user]);
+  }, [filterDate, filterKelas, filterJurusan, filteredData, students, getStudentPhoneNumber, user, schoolName]);
 
   const exportToPDF = useCallback(() => {
     setExportLoading(true);
 
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
       const periodText = filterDate === 'all' ? 'Semua Data' : (filterDate === 'today' ? 'Hari Ini' : filterDate);
@@ -1690,7 +1712,7 @@ Segera lakukan absensi melalui sistem.
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Laporan Absensi Siswa - ${schoolName}</title>
+          <title>Laporan Absensi Siswa - ${schoolNameText}</title>
           <meta charset="UTF-8">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1719,7 +1741,7 @@ Segera lakukan absensi melalui sistem.
         <body>
           <div class="header">
             <h1>📋 LAPORAN ABSENSI SISWA</h1>
-            <p>${schoolName}</p>
+            <p>${schoolNameText}</p>
           </div>
           <div class="info">
             <span><span class="label">📅 Periode:</span> <span class="value">${periodText}</span></span>
@@ -1837,7 +1859,7 @@ Segera lakukan absensi melalui sistem.
     } finally {
       setExportLoading(false);
     }
-  }, [filterDate, filterKelas, filterJurusan, filteredData, students, getStudentPhoneNumber, user]);
+  }, [filterDate, filterKelas, filterJurusan, filteredData, students, getStudentPhoneNumber, user, schoolName]);
 
   // ==================== RENDER ====================
   const dateOptions = [];
@@ -1907,6 +1929,15 @@ Segera lakukan absensi melalui sistem.
       {/* ===== HEADER ===== */}
       <div className="attendance-header-mobile">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="attendance-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="attendance-school-name-marquee"
+            />
+            <div className="attendance-school-name-underline"></div>
+          </div>
           <h1>📋 Absensi Siswa</h1>
           <p className="header-subtitle">
             Pantau kehadiran siswa

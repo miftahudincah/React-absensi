@@ -34,7 +34,7 @@ const StaffTab = ({ user }) => {
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState({ sending: false, lastResult: null });
   
-  // NEW: Photo cache state
+  // Photo cache state
   const [photoCache, setPhotoCache] = useState({});
   
   // State untuk modal tambah/edit
@@ -81,11 +81,6 @@ const StaffTab = ({ user }) => {
   const canExport = !isSiswa;
   const canSendReminder = ['developer', 'admin', 'wakil_kepala'].includes(role);
 
-  console.log('🔍 STAFF TAB - Raw Role:', rawRole);
-  console.log('🔍 STAFF TAB - Normalized Role:', role);
-  console.log('🔍 STAFF TAB - isDeveloper:', isDeveloper);
-  console.log('🔍 STAFF TAB - canManageStaff:', canManageStaff);
-
   // ==================== TOAST NOTIFICATION ====================
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -94,65 +89,40 @@ const StaffTab = ({ user }) => {
     }, 3000);
   };
 
-  // ==================== GET STAFF PHOTO - NEW ====================
+  // ==================== GET STAFF PHOTO ====================
   const getStaffPhoto = useCallback((staffId, staffName, staffEmail) => {
-    // Check cache
     if (photoCache[staffId]) {
       return photoCache[staffId];
     }
 
-    // Find matching user auth
     const userAuth = usersAuth.find(u => {
-      // Check various ID matches
       const fpMatch = u.fpId && String(u.fpId) === String(staffId);
       const userIdMatch = u.userId && String(u.userId) === String(staffId);
       const uidMatch = u.uid && String(u.uid) === String(staffId);
       const staffIdMatch = u.staffId && String(u.staffId) === String(staffId);
-      
-      // Check name (case insensitive)
       const nameMatch = u.nama && staffName && 
         u.nama.toLowerCase().trim() === staffName.toLowerCase().trim();
-      
-      // Check email (case insensitive)
       const emailMatch = u.email && staffEmail && 
         u.email.toLowerCase().trim() === staffEmail.toLowerCase().trim();
-      
       return fpMatch || userIdMatch || uidMatch || staffIdMatch || nameMatch || emailMatch;
     });
 
     let photoUrl;
 
     if (userAuth) {
-      // Check photoUrl in various formats
       const rawPhotoUrl = userAuth.photoUrl || userAuth.photoURL || userAuth.foto || '';
       
       if (rawPhotoUrl && rawPhotoUrl !== 'null' && rawPhotoUrl !== 'undefined' && rawPhotoUrl.trim() !== '') {
-        // Add timestamp to avoid cache
         const separator = rawPhotoUrl.includes('?') ? '&' : '?';
         photoUrl = rawPhotoUrl + separator + 't=' + Date.now();
-        console.log(`📸 Staff photo found for ${staffName}: ${photoUrl}`);
       } else {
-        // Fallback to avatar
-        const initial = staffName ? staffName.charAt(0).toUpperCase() : 'S';
-        photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(staffName || 'Staff')}&background=9b59b6&color=fff&size=64&bold=true`;
-        console.log(`🎨 Avatar fallback for staff ${staffName}`);
+        photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(staffName || 'Staff')}&background=9b59b6&color=fff&size=80&bold=true`;
       }
     } else {
-      // No user auth, use avatar
-      const initial = staffName ? staffName.charAt(0).toUpperCase() : 'S';
-      photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(staffName || 'Staff')}&background=9b59b6&color=fff&size=64&bold=true`;
-      console.log(`🎨 Avatar fallback (no auth) for staff ${staffName}`);
+      photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(staffName || 'Staff')}&background=9b59b6&color=fff&size=80&bold=true`;
     }
 
-    // Save to cache
-    setPhotoCache(prev => {
-      const newCache = { ...prev };
-      if (newCache[staffId]) {
-        delete newCache[staffId];
-      }
-      return { ...newCache, [staffId]: photoUrl };
-    });
-
+    setPhotoCache(prev => ({ ...prev, [staffId]: photoUrl }));
     return photoUrl;
   }, [usersAuth, photoCache]);
 
@@ -160,16 +130,9 @@ const StaffTab = ({ user }) => {
   const refreshStaffPhotoCache = useCallback((staffId) => {
     setPhotoCache(prev => {
       const newCache = { ...prev };
-      if (newCache[staffId]) {
-        delete newCache[staffId];
-      }
+      delete newCache[staffId];
       return newCache;
     });
-  }, []);
-
-  // ==================== REFRESH ALL STAFF PHOTO CACHE ====================
-  const refreshAllStaffPhotoCache = useCallback(() => {
-    setPhotoCache({});
   }, []);
 
   // ==================== GET STAFF PHONE NUMBER ====================
@@ -215,7 +178,6 @@ const StaffTab = ({ user }) => {
   // ==================== SEND WHATSAPP NOTIFICATION ====================
   const sendWhatsAppNotification = async (phoneNumber, message, type) => {
     if (!phoneNumber || phoneNumber === '-' || phoneNumber === '') {
-      console.log('⚠️ No phone number provided, skipping notification');
       setWhatsappStatus({ sending: false, lastResult: { success: false, error: 'No phone number' } });
       return { success: false, error: 'No phone number' };
     }
@@ -245,14 +207,12 @@ const StaffTab = ({ user }) => {
       const data = await response.json();
       
       if (data.success) {
-        console.log(`✅ WhatsApp ${type} notification sent to ${formattedNumber}`);
         setWhatsappStatus({ 
           sending: false, 
           lastResult: { success: true, phoneNumber: formattedNumber, type } 
         });
         return { success: true, data: data.data };
       } else {
-        console.error(`❌ Failed to send WhatsApp ${type}:`, data.error);
         setWhatsappStatus({ 
           sending: false, 
           lastResult: { success: false, error: data.error || 'Unknown error' } 
@@ -260,7 +220,6 @@ const StaffTab = ({ user }) => {
         return { success: false, error: data.error || 'Unknown error' };
       }
     } catch (error) {
-      console.error(`❌ WhatsApp send error:`, error);
       setWhatsappStatus({ 
         sending: false, 
         lastResult: { success: false, error: error.message } 
@@ -273,7 +232,6 @@ const StaffTab = ({ user }) => {
   const sendStaffReminderNotification = async (staff) => {
     const phoneNumber = getStaffPhoneNumber(staff);
     if (!phoneNumber) {
-      console.log(`⚠️ No phone for staff ${staff.nama}`);
       return { success: false, error: 'No phone number' };
     }
 
@@ -310,7 +268,6 @@ Segera lakukan absensi melalui sistem.
     if (!canSendReminder) {
       showToast('⚠️ Anda tidak memiliki akses untuk mengirim pengingat!', 'error');
       
-      // ==================== ❌ LOG BULK REMINDER DENIED ====================
       try {
         await logActivity('send_bulk_reminder_staff_tab_denied', 
           `User ${user?.nama} (${role}) mencoba kirim pengingat staff - DITOLAK`,
@@ -365,7 +322,6 @@ Segera lakukan absensi melalui sistem.
 
     showToast(`✅ Pengingat terkirim!\n📨 Berhasil: ${successCount}\n❌ Gagal: ${failCount}`, 'success');
 
-    // ==================== ✅ LOG BULK REMINDER ====================
     try {
       await logActivity('send_bulk_reminder_staff_tab', 
         `Mengirim pengingat WhatsApp ke ${successCount} staff dari halaman Staff`,
@@ -388,7 +344,6 @@ Segera lakukan absensi melalui sistem.
       if (data) {
         Object.keys(data).forEach(key => {
           const item = data[key];
-          // ⭐ EXCLUDE DEVELOPER FROM STAFF DATA ⭐
           if (item && typeof item === 'object' && item.jabatan !== 'developer') {
             list.push({
               id: key,
@@ -413,8 +368,6 @@ Segera lakukan absensi melalui sistem.
       console.error('Firebase staff error:', error);
       setError('Gagal memuat data staff dari server');
       setLoading(false);
-      
-      // ==================== ❌ LOG ERROR ====================
       logError(user, `Failed to load staff data: ${error.message}`, 'StaffTab/load');
     });
 
@@ -426,14 +379,12 @@ Segera lakukan absensi melalui sistem.
       if (data) {
         Object.keys(data).forEach(key => {
           const auth = data[key];
-          // ⭐ EXCLUDE DEVELOPER FROM USERS_AUTH ⭐
           if (auth && auth.role !== 'developer') {
             authList.push({ uid: key, ...auth });
           }
         });
       }
       setUsersAuth(authList);
-      // Refresh photo cache when users_auth changes
       setPhotoCache({});
     });
 
@@ -445,9 +396,7 @@ Segera lakukan absensi melalui sistem.
       if (data) {
         Object.keys(data).forEach(key => {
           const item = data[key];
-          if (item && typeof item === 'object') {
-            // ⭐ SKIP CODES FOR DEVELOPER ⭐
-            if (item.targetRole === 'developer') return;
+          if (item && typeof item === 'object' && item.targetRole !== 'developer') {
             list.push({
               code: key,
               ...item,
@@ -470,9 +419,7 @@ Segera lakukan absensi melalui sistem.
           if (dailyRecords) {
             Object.keys(dailyRecords).forEach(id => {
               const record = dailyRecords[id];
-              if (record) {
-                // ⭐ EXCLUDE DEVELOPER ATTENDANCE ⭐
-                if (record.jabatan && record.jabatan === 'developer') return;
+              if (record && record.jabatan !== 'developer') {
                 list.push({
                   id: date + "-" + id,
                   staffId: id,
@@ -494,8 +441,6 @@ Segera lakukan absensi melalui sistem.
     }, (error) => {
       console.error('Firebase staff attendance error:', error);
       setLoadingAttendance(false);
-      
-      // ==================== ❌ LOG ERROR ====================
       logError(user, `Failed to load staff attendance data: ${error.message}`, 'StaffTab/loadAttendance');
     });
 
@@ -753,13 +698,10 @@ Segera lakukan absensi melalui sistem.
 
       await set(ref(db, `staff/${staffId}`), staffPayload);
       
-      // ==================== ✅ LOG ADD/EDIT STAFF ====================
       if (modalMode === 'add') {
         await logAddStaff(user, formData);
-        console.log('📝 Add staff activity logged');
       } else {
         await logEditStaff(user, staffId, formData);
-        console.log('📝 Edit staff activity logged');
       }
       
       showToast(
@@ -790,10 +732,7 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Submit staff error:', error);
       setFormError('❌ Gagal menyimpan data: ' + error.message);
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Submit staff ${modalMode === 'add' ? 'add' : 'edit'} failed: ${error.message}`, 'StaffTab/submit');
-      
     } finally {
       setFormLoading(false);
     }
@@ -804,20 +743,13 @@ Segera lakukan absensi melalui sistem.
     
     try {
       await remove(ref(db, `staff/${staffId}`));
-      
-      // ==================== ✅ LOG DELETE STAFF ====================
       await logDeleteStaff(user, staffId, staffName);
-      console.log('📝 Delete staff activity logged');
-      
       showToast(`✅ Staff "${staffName}" berhasil dihapus!`, 'success');
       setStaffData(prev => prev.filter(s => s.id !== staffId));
-      // Remove from photo cache
       refreshStaffPhotoCache(staffId);
     } catch (error) {
       console.error('Delete staff error:', error);
       showToast('❌ Gagal menghapus staff: ' + error.message, 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Delete staff ${staffName} failed: ${error.message}`, 'StaffTab/delete');
     }
   };
@@ -827,7 +759,6 @@ Segera lakukan absensi melalui sistem.
     if (!isDeveloper) {
       showToast('❌ Akses ditolak! Hanya role Developer yang dapat menghapus semua data.', 'error');
       
-      // ==================== ❌ LOG DELETE ALL DENIED ====================
       try {
         await logActivity('delete_all_staff_denied', 
           `User ${user?.nama} (${role}) mencoba hapus semua staff - DITOLAK`,
@@ -865,7 +796,6 @@ Segera lakukan absensi melalui sistem.
     if (userInput !== 'HAPUS SEMUA') {
       showToast('❌ Penghapusan dibatalkan.', 'info');
       
-      // ==================== ❌ LOG DELETE ALL CANCELLED ====================
       try {
         await logActivity('delete_all_staff_cancelled', 
           `Penghapusan semua staff dibatalkan - ${filterDesc}`,
@@ -891,12 +821,10 @@ Segera lakukan absensi melalui sistem.
         await remove(ref(db, `staff/${staff.id}`));
         refreshStaffPhotoCache(staff.id);
         deletedCount++;
-        console.log(`✅ Menghapus staff: ${staff.nama} (${staff.id})`);
       }
       setStaffData(prev => prev.filter(s => !filteredStaff.some(f => f.id === s.id)));
       showToast(`✅ Berhasil menghapus ${deletedCount} data staff!\n📌 Filter: ${filterDesc}`, 'success');
       
-      // ==================== ✅ LOG DELETE ALL STAFF ====================
       await logActivity('delete_all_staff', 
         `Menghapus semua staff - ${deletedCount} data (Filter: ${filterDesc})`,
         user
@@ -905,10 +833,7 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Delete all staff error:', error);
       showToast('❌ Gagal menghapus semua data: ' + error.message, 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Delete all staff failed: ${error.message}`, 'StaffTab/deleteAll');
-      
     } finally {
       setDeleteAllLoading(false);
     }
@@ -993,9 +918,7 @@ Segera lakukan absensi melalui sistem.
       setGeneratedCode(code);
       showToast(`✅ Kode untuk ${selectedStaffForCode.nama} (${typeDisplay}) berhasil dibuat!`, 'success');
       
-      // ==================== ✅ LOG GENERATE CODE ====================
       await logGenerateCode(user, `staff_${typeDisplay}`);
-      console.log('📝 Generate code activity logged');
       
       const codesRef = ref(db, 'codes');
       const snapshot = await new Promise((resolve) => {
@@ -1017,10 +940,7 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Generate code error:', error);
       showToast('❌ Gagal membuat kode: ' + error.message, 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       await logError(user, `Generate code for ${selectedStaffForCode?.nama} failed: ${error.message}`, 'StaffTab/generateCode');
-      
     } finally {
       setGeneratingCode(false);
     }
@@ -1030,13 +950,10 @@ Segera lakukan absensi melalui sistem.
   const exportToExcel = () => {
     if (!canExport) {
       showToast('Anda tidak memiliki akses untuk mengekspor data!', 'error');
-      
-      // ==================== ❌ LOG EXPORT DENIED ====================
       logActivity('export_staff_data_excel_denied', 
         `User ${user?.nama} (${role}) mencoba export Excel staff - DITOLAK`,
         user
       ).catch(e => console.warn('⚠️ Logging failed:', e));
-      
       return;
     }
     
@@ -1072,7 +989,6 @@ Segera lakukan absensi melalui sistem.
       
       showToast('✅ Data berhasil diekspor ke Excel!', 'success');
       
-      // ==================== ✅ LOG EXPORT EXCEL ====================
       logActivity('export_staff_data_excel', 
         `Ekspor data staff ke Excel - ${filteredStaff.length} data`,
         user
@@ -1081,11 +997,8 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Export Excel error:', error);
       showToast('❌ Gagal mengekspor data: ' + error.message, 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       logError(user, `Export staff Excel failed: ${error.message}`, 'StaffTab/exportExcel')
         .catch(e => console.warn('⚠️ Logging failed:', e));
-      
     } finally {
       setExportLoading(false);
     }
@@ -1094,13 +1007,10 @@ Segera lakukan absensi melalui sistem.
   const exportToPDF = () => {
     if (!canExport) {
       showToast('Anda tidak memiliki akses untuk mengekspor data!', 'error');
-      
-      // ==================== ❌ LOG EXPORT DENIED ====================
       logActivity('export_staff_data_pdf_denied', 
         `User ${user?.nama} (${role}) mencoba export PDF staff - DITOLAK`,
         user
       ).catch(e => console.warn('⚠️ Logging failed:', e));
-      
       return;
     }
     
@@ -1122,34 +1032,49 @@ Segera lakukan absensi melalui sistem.
         <html>
         <head>
           <title>Laporan Data Staff - ${dateNow}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h1 { text-align: center; color: #333; }
-            .info { text-align: center; color: #666; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { background: #f39c12; color: white; padding: 8px; text-align: left; }
-            td { padding: 6px 8px; border: 1px solid #ddd; }
+            * { box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+            h1 { text-align: center; color: #333; font-size: 24px; }
+            .info { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+            th { background: #f39c12; color: white; padding: 10px 8px; text-align: left; }
+            td { padding: 8px; border: 1px solid #ddd; }
             tr:nth-child(even) { background: #f9f9f9; }
             .footer { margin-top: 20px; text-align: center; color: #999; font-size: 12px; }
+            @media print {
+              .no-print { display: none; }
+              body { padding: 10px; }
+              table { font-size: 11px; }
+              th, td { padding: 5px 4px; }
+            }
+            @media (max-width: 600px) {
+              table { font-size: 11px; }
+              th, td { padding: 6px 4px; }
+              h1 { font-size: 18px; }
+            }
           </style>
         </head>
         <body>
           <h1>📊 LAPORAN DATA STAFF/GURU</h1>
           <p class="info">Tanggal Cetak: ${dateNow} ${timeNow}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>ID</th>
-                <th>Nama</th>
-                <th>Jabatan</th>
-                <th>Departemen</th>
-                <th>Email</th>
-                <th>No HP</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>ID</th>
+                  <th>Nama</th>
+                  <th>Jabatan</th>
+                  <th>Departemen</th>
+                  <th>Email</th>
+                  <th>No HP</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
       
       filteredStaff.forEach((item, index) => {
@@ -1175,12 +1100,16 @@ Segera lakukan absensi melalui sistem.
       });
       
       html += `
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
           <div class="footer">
             <p>Total Staff: ${filteredStaff.length} orang</p>
             <p>Dicetak oleh: ${user?.name || user?.email || 'System'}</p>
             <p>&copy; ${new Date().getFullYear()} Sistem Absensi IoT</p>
+          </div>
+          <div class="no-print" style="text-align:center;margin-top:20px;">
+            <button onclick="window.print()" style="padding:10px 30px;background:#f39c12;color:#fff;border:none;border-radius:4px;font-size:16px;cursor:pointer;">🖨️ Cetak / Simpan PDF</button>
           </div>
         </body>
         </html>
@@ -1190,12 +1119,12 @@ Segera lakukan absensi melalui sistem.
       printWindow.document.close();
       
       setTimeout(() => {
+        printWindow.focus();
         printWindow.print();
-      }, 500);
+      }, 800);
       
       showToast('✅ Data berhasil diekspor ke PDF!', 'success');
       
-      // ==================== ✅ LOG EXPORT PDF ====================
       logActivity('export_staff_data_pdf', 
         `Ekspor data staff ke PDF - ${filteredStaff.length} data`,
         user
@@ -1204,11 +1133,8 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Export PDF error:', error);
       showToast('❌ Gagal mengekspor data: ' + error.message, 'error');
-      
-      // ==================== ❌ LOG ERROR ====================
       logError(user, `Export staff PDF failed: ${error.message}`, 'StaffTab/exportPDF')
         .catch(e => console.warn('⚠️ Logging failed:', e));
-      
     } finally {
       setExportLoading(false);
     }
@@ -1257,7 +1183,6 @@ Segera lakukan absensi melalui sistem.
   }
 
   const totalDataToDelete = filteredStaff.length;
-
   const today = new Date().toISOString().split('T')[0];
   const checkedInIds = new Set();
   attendanceData
@@ -1283,16 +1208,30 @@ Segera lakukan absensi melalui sistem.
         <div className="header-actions">
           {canExport && (
             <div className="export-buttons">
-              <button className="btn-export-excel" onClick={exportToExcel} disabled={exportLoading} title="Export Excel">
+              <button 
+                className="btn-export-excel" 
+                onClick={exportToExcel} 
+                disabled={exportLoading} 
+                title="Export Excel"
+              >
                 📊
               </button>
-              <button className="btn-export-pdf" onClick={exportToPDF} disabled={exportLoading} title="Export PDF">
+              <button 
+                className="btn-export-pdf" 
+                onClick={exportToPDF} 
+                disabled={exportLoading} 
+                title="Export PDF"
+              >
                 📄
               </button>
             </div>
           )}
           {canManageStaff && (
-            <button className="btn-add-staff" onClick={openAddModal} title="Tambah Staff">
+            <button 
+              className="btn-add-staff" 
+              onClick={openAddModal} 
+              title="Tambah Staff"
+            >
               ➕
             </button>
           )}
@@ -1434,8 +1373,6 @@ Segera lakukan absensi melalui sistem.
               );
 
               const hasWA = getStaffPhoneNumber(item);
-              
-              // Get staff photo
               const photoUrl = getStaffPhoto(item.id, item.nama, item.email);
               const userAuth = getUserAuthForStaff(item.id, item.nama, item.email);
 
@@ -1443,7 +1380,6 @@ Segera lakukan absensi melalui sistem.
                 <div key={item.id || index} className="staff-card">
                   <div className="staff-card-header">
                     <div className="staff-card-name">
-                      {/* NEW: Staff Avatar with Photo */}
                       <div className="staff-card-avatar-wrapper">
                         <img 
                           src={photoUrl} 
@@ -1451,7 +1387,7 @@ Segera lakukan absensi melalui sistem.
                           className="staff-card-avatar-img"
                           onError={(e) => {
                             const initial = item.nama ? item.nama.charAt(0).toUpperCase() : 'S';
-                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.nama || 'Staff')}&background=9b59b6&color=fff&size=64&bold=true`;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.nama || 'Staff')}&background=9b59b6&color=fff&size=80&bold=true`;
                           }}
                           style={{
                             width: '48px',
@@ -1516,15 +1452,6 @@ Segera lakukan absensi melalui sistem.
                         className="btn-action btn-refresh-photo"
                         onClick={() => refreshStaffPhotoCache(item.id)}
                         title="Refresh Foto"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#4a90e2',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          padding: '4px 8px',
-                          borderRadius: '4px'
-                        }}
                       >
                         🔄
                       </button>

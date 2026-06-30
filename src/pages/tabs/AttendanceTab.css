@@ -1,5 +1,52 @@
 /* src/pages/tabs/AttendanceTab.css */
 
+/* ==================== MARQUEE TEXT STYLES ==================== */
+.attendance-school-name-wrapper {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 2px;
+}
+
+.attendance-school-name-marquee {
+  width: 100%;
+  max-width: 500px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #00bcd4;
+  letter-spacing: 0.5px;
+}
+
+.attendance-school-name-marquee .marquee-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.attendance-school-name-marquee .marquee-content {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 2px 0;
+}
+
+.attendance-school-name-marquee .marquee-separator {
+  color: rgba(0, 188, 212, 0.2);
+  margin: 0 8px;
+}
+
+.attendance-school-name-underline {
+  display: block;
+  width: 40%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00bcd4, transparent);
+  border-radius: 2px;
+  margin-top: 2px;
+  transition: width 0.3s ease;
+}
+
+.attendance-school-name-wrapper:hover .attendance-school-name-underline {
+  width: 60%;
+}
+
 /* ==================== CONTAINER ==================== */
 .attendance-container-mobile {
   max-width: 100%;
@@ -11,10 +58,19 @@
 .attendance-header-mobile {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
   flex-wrap: wrap;
   gap: 8px;
+  background: var(--card-bg, #1a1a2e);
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .header-left h1 {
@@ -33,6 +89,51 @@
 .header-actions-mobile {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Export buttons */
+.export-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-export-excel {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #217346, #1a5c38);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export-pdf {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #d32f2f, #b71c1c);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export-excel:hover:not(:disabled),
+.btn-export-pdf:hover:not(:disabled) {
+  transform: scale(1.02);
+  opacity: 0.9;
+}
+
+.btn-export-excel:disabled,
+.btn-export-pdf:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-simulate-in-mobile,
@@ -40,7 +141,7 @@
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -59,6 +160,59 @@
 .btn-simulate-in-mobile:hover,
 .btn-simulate-out-mobile:hover {
   transform: scale(1.02);
+}
+
+/* ==================== WHATSAPP STATUS BANNER ==================== */
+.whatsapp-status-banner {
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.whatsapp-status-banner .loading-dots::after {
+  content: '...';
+  animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* ==================== AUTO REMINDER STATUS ==================== */
+.auto-reminder-status {
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(0, 188, 212, 0.10);
+  border: 1px solid rgba(0, 188, 212, 0.2);
+  color: #00bcd4;
+}
+
+/* ==================== REMINDER BANNER ==================== */
+.reminder-banner {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.12), rgba(255, 152, 0, 0.04));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 152, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* ==================== STATS CARDS MOBILE ==================== */
@@ -131,6 +285,72 @@
   transition: width 0.8s ease;
 }
 
+/* ==================== CHARTS ==================== */
+.charts-grid-mobile {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chart-card-mobile {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chart-card-full {
+  grid-column: 1 / -1;
+}
+
+.chart-title {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  text-align: center;
+}
+
+.chart-container-mobile {
+  max-height: 200px;
+  position: relative;
+  margin: 0 auto;
+}
+
+.chart-container-bar {
+  max-height: 220px;
+}
+
+.chart-container-line {
+  max-height: 220px;
+}
+
+.chart-info-mobile {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-wrap: wrap;
+}
+
+.chart-info-scroll {
+  max-height: 60px;
+  overflow-y: auto;
+  gap: 4px 12px;
+}
+
+.chart-info-tag {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
 /* ==================== FILTERS MOBILE ==================== */
 .filter-container-mobile {
   display: grid;
@@ -176,6 +396,15 @@
   border-color: #00bcd4;
 }
 
+.filter-count-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ==================== FILTER INFO ==================== */
 .filter-info-mobile {
   display: flex;
   align-items: center;
@@ -185,6 +414,8 @@
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 /* ==================== TABLE CARDS MOBILE ==================== */
@@ -248,6 +479,16 @@
   font-size: 8px;
 }
 
+.card-simulate-badge {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  font-size: 8px;
+  background: #9c27b0;
+  border-radius: 50%;
+  padding: 1px 2px;
+}
+
 .card-info-mobile {
   flex: 1;
 }
@@ -258,14 +499,22 @@
   font-size: 14px;
 }
 
-.card-id-mobile {
+.card-class-mobile {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.4);
+}
+
+.card-id-mobile {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
   font-family: monospace;
 }
 
 .card-status-mobile {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .status-badge-mobile {
@@ -319,7 +568,10 @@
 .card-footer-mobile {
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-delete-mobile {
@@ -362,6 +614,24 @@
   margin: 0;
 }
 
+.btn-view-all-mobile {
+  padding: 8px 16px;
+  background: #00bcd4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.btn-view-all-mobile:hover {
+  background: #0097a7;
+  transform: scale(1.02);
+}
+
 /* ==================== FOOTER MOBILE ==================== */
 .attendance-footer-mobile {
   padding: 8px 12px;
@@ -375,6 +645,9 @@
   color: rgba(255, 255, 255, 0.3);
   font-size: 10px;
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
 }
 
 .footer-info-mobile code {
@@ -387,6 +660,23 @@
 
 .footer-wa-info-mobile {
   color: #25D366;
+}
+
+.footer-all-data-mobile {
+  color: #00bcd4;
+}
+
+.footer-role-mobile {
+  color: #9c27b0;
+}
+
+.footer-filter-mobile {
+  color: #ff9800;
+}
+
+.footer-dev-mobile {
+  color: #f44336;
+  font-weight: bold;
 }
 
 /* ==================== MODAL MOBILE ==================== */
@@ -553,18 +843,25 @@
   flex-shrink: 0;
 }
 
+.student-item-info-mobile {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
+
 .student-item-id-mobile {
   font-weight: 600;
   color: #00bcd4;
   font-family: monospace;
   font-size: 11px;
-  min-width: 40px;
 }
 
 .student-item-name-mobile {
-  flex: 1;
   font-weight: 500;
   font-size: 13px;
+  color: #fff;
 }
 
 .student-item-class-mobile {
@@ -572,9 +869,23 @@
   font-size: 11px;
 }
 
+.student-item-badges-mobile {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
 .student-item-badge-mobile,
 .student-item-wa-mobile {
   font-size: 10px;
+}
+
+.student-item-checkout-badge {
+  font-size: 9px;
+  background: #4caf50;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .selected-student-mobile {
@@ -593,12 +904,46 @@
   color: #4caf50;
 }
 
+.selected-student-info-mobile {
+  flex: 1;
+}
+
+.selected-name-mobile {
+  font-size: 14px;
+  color: #fff;
+}
+
+.selected-class-mobile {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.selected-id-mobile {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.selected-delay-mobile {
+  font-size: 11px;
+  color: #ff9800;
+}
+
 .wa-status-mobile {
   color: #25D366;
+  font-weight: bold;
 }
 
 .wa-status-no-mobile {
   color: #f44336;
+}
+
+.info-box {
+  padding: 10px 12px;
+  background: rgba(255, 152, 0, 0.08);
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .btn-cancel-mobile {
@@ -609,6 +954,11 @@
   color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-cancel-mobile:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .btn-save-mobile {
@@ -620,11 +970,28 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-save-mobile:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
 }
 
 .btn-save-mobile:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ==================== STUDENT/GURU/STAFF BANNER ==================== */
+.student-info-banner {
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* ==================== LOADING ==================== */
@@ -682,108 +1049,14 @@
   color: white;
   font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* ==================== LIGHT MODE ==================== */
-@media (prefers-color-scheme: light) {
-  .stat-card-mobile {
-    background: #ffffff;
-  }
-  
-  .stat-number-mobile {
-    color: #1a1a2e;
-  }
-  
-  .progress-container-mobile {
-    background: #f5f5f5;
-  }
-  
-  .filter-container-mobile {
-    background: #f5f5f5;
-  }
-  
-  .filter-group-mobile select {
-    background: #ffffff;
-    color: #1a1a2e;
-  }
-  
-  .table-container-mobile {
-    background: #ffffff;
-  }
-  
-  .attendance-card-mobile {
-    background: #f8f9fa;
-  }
-  
-  .card-name-mobile {
-    color: #1a1a2e;
-  }
-  
-  .card-value-mobile {
-    color: rgba(0, 0, 0, 0.6);
-  }
-  
-  .modal-box-mobile {
-    background: #ffffff;
-  }
-  
-  .modal-header-mobile h3 {
-    color: #1a1a2e;
-  }
-  
-  .search-input-mobile {
-    background: #f5f5f5;
-    color: #1a1a2e;
-  }
-  
-  .status-select-mobile {
-    background: #f5f5f5;
-    color: #1a1a2e;
-  }
-  
-  .empty-state-mobile h3 {
-    color: #1a1a2e;
-  }
-  
-  .empty-state-mobile p {
-    color: rgba(0, 0, 0, 0.4);
-  }
-  
-  .footer-info-mobile {
-    color: rgba(0, 0, 0, 0.3);
-  }
+.btn-retry:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
 }
 
-/* ==================== RESPONSIVE ==================== */
-@media (max-width: 480px) {
-  .stats-cards-mobile {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .filter-container-mobile {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-  
-  .card-body-mobile {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-  
-  .header-left h1 {
-    font-size: 17px;
-  }
-  
-  .btn-simulate-in-mobile,
-  .btn-simulate-out-mobile {
-    font-size: 10px;
-    padding: 4px 10px;
-  }
-  
-  .modal-box-mobile {
-    max-height: 90vh;
-  }
-}
 /* ==================== TOMBOL HAPUS SEMUA ==================== */
 .btn-delete-all-attendance {
   padding: 6px 14px;
@@ -860,7 +1133,7 @@
 .developer-banner-attendance .dev-status {
   font-weight: bold;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-muted, rgba(255,255,255,0.6));
 }
 
 .developer-banner-attendance .dev-status span {
@@ -869,7 +1142,7 @@
 
 .developer-banner-attendance .dev-badge {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-muted, rgba(255,255,255,0.6));
 }
 
 .developer-banner-attendance .dev-badge.highlight-green {
@@ -885,7 +1158,7 @@
 .developer-banner-attendance .dev-count {
   margin-left: auto;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-muted, rgba(255,255,255,0.4));
 }
 
 /* ==================== BANNER DELETE DENGAN TOMBOL BESAR ==================== */
@@ -920,7 +1193,7 @@
 
 .delete-all-banner .banner-info {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-muted, rgba(255,255,255,0.6));
 }
 
 .delete-all-banner .banner-info strong {
@@ -955,8 +1228,214 @@
   transform: none;
 }
 
-/* Responsive untuk mobile */
+/* ==================== LIGHT MODE ==================== */
+@media (prefers-color-scheme: light) {
+  .attendance-header-mobile {
+    background: #ffffff;
+  }
+  
+  .header-left h1 {
+    color: #1a1a2e;
+  }
+  
+  .stat-card-mobile {
+    background: #ffffff;
+  }
+  
+  .stat-number-mobile {
+    color: #1a1a2e;
+  }
+  
+  .progress-container-mobile {
+    background: #f5f5f5;
+  }
+  
+  .filter-container-mobile {
+    background: #f5f5f5;
+  }
+  
+  .filter-group-mobile select {
+    background: #ffffff;
+    color: #1a1a2e;
+  }
+  
+  .table-container-mobile {
+    background: #ffffff;
+  }
+  
+  .attendance-card-mobile {
+    background: #f8f9fa;
+  }
+  
+  .card-name-mobile {
+    color: #1a1a2e;
+  }
+  
+  .card-value-mobile {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  
+  .modal-box-mobile {
+    background: #ffffff;
+  }
+  
+  .modal-header-mobile h3 {
+    color: #1a1a2e;
+  }
+  
+  .search-input-mobile {
+    background: #f5f5f5;
+    color: #1a1a2e;
+  }
+  
+  .status-select-mobile {
+    background: #f5f5f5;
+    color: #1a1a2e;
+  }
+  
+  .empty-state-mobile h3 {
+    color: #1a1a2e;
+  }
+  
+  .empty-state-mobile p {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .footer-info-mobile {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .chart-card-mobile {
+    background: #ffffff;
+  }
+  
+  .chart-title {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  
+  .chart-info-mobile {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .chart-info-tag {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.5);
+  }
+  
+  .filter-info-mobile {
+    background: rgba(0, 188, 212, 0.1);
+  }
+  
+  .student-item-name-mobile {
+    color: #1a1a2e;
+  }
+  
+  .selected-student-mobile {
+    background: rgba(76, 175, 80, 0.1);
+  }
+  
+  .selected-name-mobile {
+    color: #1a1a2e;
+  }
+  
+  .info-box {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  
+  .attendance-school-name-marquee {
+    color: #00838f;
+  }
+  
+  .attendance-school-name-underline {
+    background: linear-gradient(90deg, transparent, #00838f, transparent);
+  }
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .attendance-school-name-marquee {
+    font-size: 14px;
+    max-width: 300px;
+  }
+  
+  .attendance-header-mobile {
+    padding: 12px;
+  }
+  
+  .header-left h1 {
+    font-size: 17px;
+  }
+  
+  .charts-grid-mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 480px) {
+  .attendance-school-name-marquee {
+    font-size: 12px;
+    max-width: 200px;
+  }
+  
+  .stats-cards-mobile {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .filter-container-mobile {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .card-body-mobile {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  
+  .header-left h1 {
+    font-size: 15px;
+  }
+  
+  .btn-simulate-in-mobile,
+  .btn-simulate-out-mobile {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+  
+  .btn-export-excel,
+  .btn-export-pdf {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+  
+  .modal-box-mobile {
+    max-height: 90vh;
+  }
+  
+  .header-actions-mobile {
+    width: 100%;
+  }
+  
+  .export-buttons {
+    flex: 1;
+  }
+  
+  .btn-export-excel,
+  .btn-export-pdf {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .simulate-buttons-mobile {
+    display: flex;
+    width: 100%;
+    gap: 6px;
+  }
+  
+  .simulate-buttons-mobile button {
+    flex: 1;
+    justify-content: center;
+  }
+  
   .delete-all-banner {
     flex-direction: column;
     align-items: stretch;
@@ -992,4 +1471,50 @@
     width: 100%;
     text-align: center;
   }
+  
+  .student-item-mobile {
+    padding: 6px 8px;
+    flex-wrap: wrap;
+  }
+  
+  .student-item-info-mobile {
+    flex: 1;
+    min-width: 100px;
+  }
+  
+  .student-item-badges-mobile {
+    flex-wrap: wrap;
+  }
 }
+
+/* ==================== UTILITY ==================== */
+.text-muted {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+
+.flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }

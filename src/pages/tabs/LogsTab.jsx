@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ref, onValue, off, get, remove } from 'firebase/database';
 import { db } from '../../firebase/config';
 import { logActivity } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './LogsTab.css';
 
 const LogsTab = ({ user }) => {
@@ -15,6 +17,9 @@ const LogsTab = ({ user }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAutoDeleting, setIsAutoDeleting] = useState(false);
+  
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
   
   // Filter states
   const [filterAction, setFilterAction] = useState('all');
@@ -39,6 +44,54 @@ const LogsTab = ({ user }) => {
   
   const hasAccess = isDeveloper || isAdmin || isWakilKepala || isGuru || isStaff;
   const canDelete = isDeveloper || isAdmin;
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [LogsTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [LogsTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [LogsTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [LogsTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== GET ROLE HELPERS ====================
   const getRoleDisplayName = useCallback((role) => {
@@ -577,6 +630,15 @@ const LogsTab = ({ user }) => {
       {/* ===== HEADER ===== */}
       <div className="logs-header">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="logs-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="logs-school-name-marquee"
+            />
+            <div className="logs-school-name-underline"></div>
+          </div>
           <h1>📋 Log Aktivitas</h1>
           <p className="header-subtitle">
             Riwayat aktivitas sistem sekolah
@@ -669,6 +731,9 @@ const LogsTab = ({ user }) => {
             {/* ⭐ INDICATOR LOG DEVELOPER DISEMBUNYIKAN ⭐ */}
             <span className="developer-hidden" style={{ color: '#9b59b6', marginLeft: '8px' }}>
               • 🔒 Log Developer disembunyikan
+            </span>
+            <span className="school-name-indicator" style={{ color: '#00bcd4', marginLeft: '8px' }}>
+              • 🏫 {schoolName}
             </span>
           </span>
         </div>
@@ -811,6 +876,9 @@ const LogsTab = ({ user }) => {
           {/* ⭐ INDICATOR LOG DEVELOPER DISEMBUNYIKAN ⭐ */}
           <span className="footer-dev-hidden" style={{ color: '#9b59b6' }}>
             • 🔒 Log Developer tidak ditampilkan
+          </span>
+          <span className="footer-school" style={{ color: 'var(--text-muted)' }}>
+            • 🏫 {schoolName}
           </span>
         </p>
       </div>

@@ -9,6 +9,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './ChatTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -29,6 +31,9 @@ const ChatTab = ({ user }) => {
   const [chatPartnerData, setChatPartnerData] = useState(null);
   const [friendCheckCache, setFriendCheckCache] = useState({});
   const [userDataCache, setUserDataCache] = useState({});
+  
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
 
   // ==================== REFS ====================
   const messagesEndRef = useRef(null);
@@ -41,14 +46,62 @@ const ChatTab = ({ user }) => {
   const loadingMessagesRef = useRef(false);
   const currentChatWithRef = useRef(null);
 
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [ChatTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [ChatTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [ChatTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [ChatTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
+
   // ==================== TOKEN MANAGEMENT ====================
   const getAuthToken = useCallback(async () => {
     let token = localStorage.getItem('authToken');
     if (token) return token;
     
-    if (auth?.currentUser) {
+    if (window.auth?.currentUser) {
       try {
-        token = await auth.currentUser.getIdToken();
+        token = await window.auth.currentUser.getIdToken();
         localStorage.setItem('authToken', token);
         return token;
       } catch (error) {
@@ -973,6 +1026,39 @@ const ChatTab = ({ user }) => {
 
   return (
     <div className="chat-tab-container">
+      {/* ===== HEADER ===== */}
+      <div className="chat-tab-header">
+        <div className="chat-header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="chat-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="chat-school-name-marquee"
+            />
+            <div className="chat-school-name-underline"></div>
+          </div>
+          <h1>💬 Pesan</h1>
+          <p className="chat-subtitle">
+            Kirim dan terima pesan dari teman
+            <span className="unread-total">
+              {Object.values(unreadCounts).reduce((a, b) => a + b, 0) > 0 && (
+                ` • ${Object.values(unreadCounts).reduce((a, b) => a + b, 0)} belum dibaca`
+              )}
+            </span>
+          </p>
+        </div>
+        <div className="chat-header-actions">
+          <button 
+            className="btn-refresh-chat"
+            onClick={() => loadChatList()}
+            title="Refresh daftar chat"
+          >
+            🔄
+          </button>
+        </div>
+      </div>
+
       <div className="chat-wrapper">
         {/* ===== SIDEBAR ===== */}
         <div className="chat-sidebar">
@@ -1217,6 +1303,18 @@ const ChatTab = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* ===== FOOTER ===== */}
+      <div className="chat-footer">
+        <p>
+          💬 Pesan terenkripsi aman
+          <span className="footer-role"> • Role: {getRoleDisplayName(user?.role)}</span>
+          <span className="footer-school"> • 🏫 {schoolName || 'Sistem Absensi'}</span>
+          {Object.values(unreadCounts).reduce((a, b) => a + b, 0) > 0 && (
+            <span className="footer-unread"> • 📬 {Object.values(unreadCounts).reduce((a, b) => a + b, 0)} belum dibaca</span>
+          )}
+        </p>
+      </div>
     </div>
   );
 };

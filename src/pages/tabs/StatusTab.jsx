@@ -1,5 +1,7 @@
 // src/pages/tabs/StatusTab.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import { ref, onValue, off, get } from 'firebase/database';
+import { db } from '../../firebase/config';
 import StatusManager from '../../components/Status/StatusManager';
 // ==================== IMPORT LOGGER ====================
 import { 
@@ -9,12 +11,65 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './StatusTab.css';
 
 const StatusTab = ({ user, onStatusUpdate }) => {
   const [statusUnviewedCount, setStatusUnviewedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    // Coba ambil dari system_config/schoolName terlebih dahulu
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        console.log('✅ [StatusTab] School name from system_config:', name);
+        setSchoolName(name);
+      } else {
+        // Jika tidak ada di system_config, coba dari school_info
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            console.log('✅ [StatusTab] School name from school_info:', infoData.name);
+            setSchoolName(infoData.name);
+          } else {
+            // Fallback ke school_config
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                console.log('✅ [StatusTab] School name from school_config:', configData.schoolName);
+                setSchoolName(configData.schoolName);
+              } else {
+                console.warn('⚠️ [StatusTab] No school name found in database, using default');
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== HANDLE STATUS UPDATE ====================
   const handleStatusUpdate = useCallback((count) => {
@@ -166,6 +221,15 @@ const StatusTab = ({ user, onStatusUpdate }) => {
       {/* ===== HEADER ===== */}
       <div className="status-tab-header">
         <div className="status-tab-header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="status-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="status-school-name-marquee"
+            />
+            <div className="status-school-name-underline"></div>
+          </div>
           <div className="status-tab-title">
             <span className="status-tab-icon">📸</span>
             <h2>Status</h2>
@@ -232,6 +296,10 @@ const StatusTab = ({ user, onStatusUpdate }) => {
             ) : (
               <span>Semua status telah dilihat</span>
             )}
+          </span>
+          <span className="status-tab-stat">
+            <span className="stat-school">🏫</span>
+            <span>{schoolName || 'Sistem Absensi'}</span>
           </span>
         </div>
       </div>
