@@ -2,6 +2,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ref, onValue, off, get, set, update, remove, push } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logCreateAnnouncement, 
+  logUpdateAnnouncement, 
+  logDeleteAnnouncement,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './AnnouncementsTab.css';
 
 // API Base URL
@@ -279,6 +287,9 @@ const AnnouncementsTab = ({ user }) => {
       console.error('Firebase announcements error:', error);
       setError('Gagal memuat pengumuman: ' + error.message);
       setLoading(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load announcements: ${error.message}`, 'AnnouncementsTab/load');
     });
     
     return unsubscribe;
@@ -305,6 +316,8 @@ const AnnouncementsTab = ({ user }) => {
       
     } catch (error) {
       console.error('Error marking as read:', error);
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Failed to mark announcement as read: ${error.message}`, 'AnnouncementsTab/markAsRead');
     }
   }, [user?.uid, user?.nama, user?.email]);
 
@@ -340,10 +353,16 @@ const AnnouncementsTab = ({ user }) => {
       setMessage({ text: `✅ Semua pengumuman telah ditandai sebagai dibaca (${unreadAnnouncements.length})`, type: 'success' });
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
       
+      // ==================== ✅ LOG SYSTEM ====================
+      await logSystem('mark_all_announcements_read', `User ${user.nama || user.email} marked ${unreadAnnouncements.length} announcements as read`);
+      
     } catch (error) {
       console.error('Error marking all as read:', error);
       setMessage({ text: '❌ Gagal menandai semua sebagai dibaca', type: 'error' });
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Failed to mark all announcements as read: ${error.message}`, 'AnnouncementsTab/markAllAsRead');
     }
   }, [user?.uid, user?.nama, user?.email, announcements]);
 
@@ -406,18 +425,21 @@ const AnnouncementsTab = ({ user }) => {
         }
         
         setMessage({ text: '✅ Pengumuman berhasil diperbarui!', type: 'success' });
-        if (typeof window.logActivity === 'function') {
-          window.logActivity('update_announcement', `Memperbarui pengumuman "${title.trim()}"`);
-        }
+        
+        // ==================== ✅ LOG UPDATE ANNOUNCEMENT ====================
+        await logUpdateAnnouncement(user, title.trim());
+        console.log('📝 Update announcement activity logged');
+        
       } else {
         // CREATE
         announcementRef = push(ref(db, 'announcements'));
         await set(announcementRef, announcementData);
         
         setMessage({ text: '✅ Pengumuman berhasil dibuat!', type: 'success' });
-        if (typeof window.logActivity === 'function') {
-          window.logActivity('create_announcement', `Membuat pengumuman "${title.trim()}"`);
-        }
+        
+        // ==================== ✅ LOG CREATE ANNOUNCEMENT ====================
+        await logCreateAnnouncement(user, title.trim());
+        console.log('📝 Create announcement activity logged');
       }
       
       // Reset form
@@ -427,6 +449,9 @@ const AnnouncementsTab = ({ user }) => {
     } catch (error) {
       console.error('Save announcement error:', error);
       setMessage({ text: '❌ Gagal menyimpan pengumuman: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Failed to save announcement: ${error.message}`, 'AnnouncementsTab/save');
     } finally {
       setUploading(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -467,12 +492,16 @@ const AnnouncementsTab = ({ user }) => {
       
       setMessage({ text: `🗑️ Pengumuman "${title}" berhasil dihapus!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_announcement', `Menghapus pengumuman "${title}"`);
-      }
+      // ==================== ✅ LOG DELETE ANNOUNCEMENT ====================
+      await logDeleteAnnouncement(user, title);
+      console.log('📝 Delete announcement activity logged');
+      
     } catch (error) {
       console.error('Delete announcement error:', error);
       setMessage({ text: '❌ Gagal menghapus pengumuman: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Failed to delete announcement: ${error.message}`, 'AnnouncementsTab/delete');
     } finally {
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
     }

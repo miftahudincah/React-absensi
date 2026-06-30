@@ -3,6 +3,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, update, get, set, onValue, off } from 'firebase/database';
 import { db, auth } from '../../firebase/config';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut } from 'firebase/auth';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logUploadProfilePhoto,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './ProfileTab.css';
 
 // Konfigurasi API
@@ -487,10 +494,12 @@ const ProfileTab = ({ user }) => {
         confirmPassword: ''
       });
 
-      // Step 6: Log aktivitas
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('change_password', `User ${user?.nama || user?.email} mengubah password`);
-      }
+      // ==================== ✅ LOG CHANGE PASSWORD ====================
+      await logActivity('change_password', 
+        `User ${user?.nama || user?.email} mengubah password`,
+        user
+      );
+      console.log('📝 Change password activity logged');
 
       // Step 7: Tawarkan logout untuk keamanan
       setTimeout(() => {
@@ -543,6 +552,10 @@ const ProfileTab = ({ user }) => {
       
       setPasswordError(errorMessage);
       setMessage({ text: errorMessage, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Change password failed: ${error.message}`, 'ProfileTab/changePassword');
+      
     } finally {
       setChangingPassword(false);
     }
@@ -569,6 +582,11 @@ const ProfileTab = ({ user }) => {
             if (oldPhotoUrl && oldPhotoUrl !== newPhotoUrl) {
               await deletePhotoFromSupabase(oldPhotoUrl);
             }
+            
+            // ==================== ✅ LOG UPLOAD PHOTO ====================
+            await logUploadProfilePhoto(user);
+            console.log('📝 Upload profile photo activity logged');
+            
           } catch (uploadError) {
             setMessage({ text: `❌ Gagal upload foto: ${uploadError.message}`, type: 'error' });
             setSaving(false);
@@ -618,6 +636,11 @@ const ProfileTab = ({ user }) => {
           if (oldPhotoUrl && oldPhotoUrl !== newPhotoUrl) {
             await deletePhotoFromSupabase(oldPhotoUrl);
           }
+          
+          // ==================== ✅ LOG UPLOAD PHOTO ====================
+          await logUploadProfilePhoto(user);
+          console.log('📝 Upload profile photo activity logged');
+          
         } catch (uploadError) {
           setMessage({ text: `❌ Gagal upload foto: ${uploadError.message}`, type: 'error' });
           setSaving(false);
@@ -687,6 +710,13 @@ const ProfileTab = ({ user }) => {
       setOldPhotoUrl(newPhotoUrl || '');
       setPhotoFile(null);
       
+      // ==================== ✅ LOG SAVE PROFILE ====================
+      await logActivity('update_profile', 
+        `User ${user?.nama || user?.email} memperbarui profil`,
+        user
+      );
+      console.log('📝 Update profile activity logged');
+      
       setMessage({ text: '✅ Profil berhasil diperbarui!', type: 'success' });
       setSaveSuccess(true);
       setIsEditing(false);
@@ -696,6 +726,10 @@ const ProfileTab = ({ user }) => {
     } catch (error) {
       console.error('❌ Error saving profile:', error);
       setMessage({ text: `❌ Gagal menyimpan: ${error.message}`, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Save profile failed: ${error.message}`, 'ProfileTab/save');
+      
     } finally {
       setSaving(false);
     }

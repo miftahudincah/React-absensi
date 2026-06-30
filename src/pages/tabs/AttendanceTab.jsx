@@ -4,7 +4,17 @@ import { ref, onValue, set, remove, update, get } from 'firebase/database';
 import { db } from '../../firebase/config';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement, Filler } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
-import { logActivity } from '../../utils/logger';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logAttendance,
+  logSimulateAttendanceIn,
+  logSimulateAttendanceOut,
+  logDeleteAttendance,
+  logExportData,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './AttendanceTab.css';
 
 // Register ChartJS components
@@ -468,15 +478,14 @@ Segera lakukan absensi melalui sistem.
         await sendCheckInNotification(student, timeStr, late);
       }
 
-      // Log activity
-      try {
-        await logActivity('student_check_in', 
-          `${simulate ? '[SIMULASI] ' : ''}${student.nama} (${student.id}) absen masuk ${timeStr}${late ? ' terlambat ' + delayMinutes + ' menit' : ''}`,
-          user
-        );
-      } catch (e) {
-        console.warn('⚠️ Logging failed:', e);
-      }
+      // ==================== ✅ LOG ATTENDANCE CHECK IN ====================
+      const logStatus = simulate ? '[SIMULASI] ' : '';
+      const lateText = late ? ` terlambat ${delayMinutes} menit` : '';
+      await logActivity('student_check_in', 
+        `${logStatus}${student.nama} (${student.id}) absen masuk ${timeStr}${lateText}`,
+        user
+      );
+      console.log('📝 Check-in activity logged');
 
       return { 
         success: true, 
@@ -488,6 +497,10 @@ Segera lakukan absensi melalui sistem.
 
     } catch (error) {
       console.error('❌ Check-in error:', error);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Check-in failed for ${student.nama}: ${error.message}`, 'AttendanceTab/checkIn');
+      
       return { success: false, error: error.message };
     }
   }, [students, attendanceData, isWorkingDay, isLate, calculateDelayMinutes, user, sendCheckInNotification]);
@@ -555,15 +568,13 @@ Segera lakukan absensi melalui sistem.
         await sendCheckOutNotification(student, existingAttendance.timeIn, timeStr);
       }
 
-      // Log activity
-      try {
-        await logActivity('student_check_out', 
-          `${simulate ? '[SIMULASI] ' : ''}${student.nama} (${student.id}) absen pulang ${timeStr}`,
-          user
-        );
-      } catch (e) {
-        console.warn('⚠️ Logging failed:', e);
-      }
+      // ==================== ✅ LOG ATTENDANCE CHECK OUT ====================
+      const logStatus = simulate ? '[SIMULASI] ' : '';
+      await logActivity('student_check_out', 
+        `${logStatus}${student.nama} (${student.id}) absen pulang ${timeStr}`,
+        user
+      );
+      console.log('📝 Check-out activity logged');
 
       return { 
         success: true, 
@@ -573,6 +584,10 @@ Segera lakukan absensi melalui sistem.
 
     } catch (error) {
       console.error('❌ Check-out error:', error);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Check-out failed for ${student.nama}: ${error.message}`, 'AttendanceTab/checkOut');
+      
       return { success: false, error: error.message };
     }
   }, [students, attendanceData, canCheckOut, getStudentDelayOut, schoolConfig.checkOutTime, user, sendCheckOutNotification]);
@@ -725,6 +740,7 @@ Segera lakukan absensi melalui sistem.
 
     try {
       let result;
+      let logDetails = '';
       
       if (simulateType === 'in') {
         // Simulate check in
@@ -744,15 +760,10 @@ Segera lakukan absensi melalui sistem.
                            (result.isLate ? ' (Terlambat)' : '');
           alert(`✅ Simulasi absen masuk berhasil untuk ${selectedStudent.nama} (${result.time})${statusMsg}`);
           
-          // Log
-          try {
-            await logActivity('simulate_check_in', 
-              `${user?.nama} (${role}) mensimulasikan absen masuk untuk ${selectedStudent.nama} (${result.time}) - Status: ${simulateStatus}`,
-              user
-            );
-          } catch (e) {
-            console.warn('⚠️ Logging failed:', e);
-          }
+          // ==================== ✅ LOG SIMULATE CHECK IN ====================
+          await logSimulateAttendanceIn(user, selectedStudent.nama);
+          console.log('📝 Simulate check-in activity logged');
+          
         } else {
           alert(`❌ Gagal simulasi absen masuk: ${result.error}`);
         }
@@ -795,14 +806,10 @@ Segera lakukan absensi melalui sistem.
         if (result.success) {
           alert(`✅ Simulasi absen pulang berhasil untuk ${selectedStudent.nama} (${result.time})`);
           
-          try {
-            await logActivity('simulate_check_out', 
-              `${user?.nama} (${role}) mensimulasikan absen pulang untuk ${selectedStudent.nama} (${result.time})`,
-              user
-            );
-          } catch (e) {
-            console.warn('⚠️ Logging failed:', e);
-          }
+          // ==================== ✅ LOG SIMULATE CHECK OUT ====================
+          await logSimulateAttendanceOut(user, selectedStudent.nama);
+          console.log('📝 Simulate check-out activity logged');
+          
         } else {
           alert(`❌ Gagal simulasi absen pulang: ${result.error}`);
         }
@@ -815,14 +822,9 @@ Segera lakukan absensi melalui sistem.
       console.error('Simulate error:', error);
       alert('❌ Gagal melakukan simulasi: ' + error.message);
       
-      try {
-        await logActivity('simulate_attendance_error', 
-          `Gagal simulasi ${simulateType === 'in' ? 'masuk' : 'pulang'} untuk ${selectedStudent?.nama}: ${error.message}`,
-          user
-        );
-      } catch (e) {
-        console.warn('⚠️ Logging failed:', e);
-      }
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Simulate ${simulateType === 'in' ? 'check-in' : 'check-out'} failed for ${selectedStudent?.nama}: ${error.message}`, 'AttendanceTab/simulate');
+      
     } finally {
       setSimulateLoading(false);
     }
@@ -861,6 +863,7 @@ Segera lakukan absensi melalui sistem.
       } 
     });
 
+    // ==================== ✅ LOG BULK REMINDER ====================
     try {
       await logActivity('send_bulk_reminder', 
         `Mengirim pengingat ke ${successCount} siswa (${failCount} gagal)`,
@@ -913,6 +916,8 @@ Segera lakukan absensi melalui sistem.
       try {
         const result = await sendBulkReminder(absent);
         setAutoReminderSent(true);
+        
+        // ==================== ✅ LOG AUTO REMINDER ====================
         try {
           await logActivity('auto_reminder', 
             `Pengingat otomatis dikirim ke ${result.successCount} siswa (${result.failCount} gagal)`,
@@ -921,21 +926,24 @@ Segera lakukan absensi melalui sistem.
         } catch (e) {
           console.warn('⚠️ Logging failed:', e);
         }
+        
       } catch (error) {
         console.error('❌ Auto reminder error:', error);
+        
+        // ==================== ❌ LOG ERROR ====================
         try {
-          await logActivity('auto_reminder_error', 
-            `Gagal mengirim auto reminder: ${error.message}`,
-            user
-          );
+          await logError(user, `Auto reminder failed: ${error.message}`, 'AttendanceTab/autoReminder');
         } catch (e) {
           console.warn('⚠️ Logging failed:', e);
         }
+        
       } finally {
         setAutoReminderLoading(false);
       }
     } else {
       setAutoReminderSent(true);
+      
+      // ==================== ✅ LOG AUTO REMINDER (NO ABSENT) ====================
       try {
         await logActivity('auto_reminder', 
           'Semua siswa sudah absen hari ini - tidak perlu pengingat',
@@ -1051,6 +1059,9 @@ Segera lakukan absensi melalui sistem.
       console.error('Firebase attendance error:', error);
       setError('Gagal memuat data absensi siswa dari server');
       setLoading(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load attendance data: ${error.message}`, 'AttendanceTab/load');
     });
 
     return () => {
@@ -1437,6 +1448,8 @@ Segera lakukan absensi melalui sistem.
   const deleteAttendance = useCallback(async (id) => {
     if (!canDelete) {
       alert('⚠️ Hanya Admin/Developer/Wakil Kepala yang dapat menghapus data!');
+      
+      // ==================== ❌ LOG DELETE DENIED ====================
       try {
         await logActivity('delete_attendance_denied', 
           `User ${user?.nama} (${role}) mencoba hapus absensi - DITOLAK`,
@@ -1469,11 +1482,10 @@ Segera lakukan absensi melalui sistem.
 
       alert(`✅ Data absensi siswa "${studentName}" berhasil dihapus!`);
 
+      // ==================== ✅ LOG DELETE ATTENDANCE ====================
       try {
-        await logActivity('delete_attendance', 
-          `Menghapus absensi siswa ${studentName} (ID: ${studentId}) pada tanggal ${date}`,
-          user
-        );
+        await logDeleteAttendance(user, studentName, date);
+        console.log('📝 Delete attendance activity logged');
       } catch (e) {
         console.warn('⚠️ Logging failed:', e);
       }
@@ -1481,11 +1493,10 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Delete error:', error);
       alert('❌ Gagal menghapus data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
       try {
-        await logActivity('delete_attendance_error', 
-          `Gagal hapus absensi ${studentName}: ${error.message}`,
-          user
-        );
+        await logError(user, `Delete attendance failed for ${studentName}: ${error.message}`, 'AttendanceTab/delete');
       } catch (e) {
         console.warn('⚠️ Logging failed:', e);
       }
@@ -1495,6 +1506,8 @@ Segera lakukan absensi melalui sistem.
   const deleteAllAttendance = useCallback(async () => {
     if (!isDeveloper) {
       alert('❌ Akses ditolak! Hanya role Developer yang dapat menghapus semua data.');
+      
+      // ==================== ❌ LOG DELETE ALL DENIED ====================
       try {
         await logActivity('delete_all_attendance_denied', 
           `User ${user?.nama} (${role}) mencoba hapus semua data - DITOLAK`,
@@ -1530,6 +1543,8 @@ Segera lakukan absensi melalui sistem.
     const userInput = prompt(confirmMessage);
     if (userInput !== 'HAPUS SEMUA') {
       alert('❌ Penghapusan dibatalkan.');
+      
+      // ==================== ❌ LOG DELETE ALL CANCELLED ====================
       try {
         await logActivity('delete_all_attendance_cancelled', 
           `Penghapusan semua data dibatalkan - ${filterDesc}`,
@@ -1567,6 +1582,7 @@ Segera lakukan absensi melalui sistem.
 
       alert(`✅ Berhasil menghapus ${deletedCount} data absensi siswa dari ${dateArray.length} tanggal!\n\n📌 Filter: ${filterDesc}`);
 
+      // ==================== ✅ LOG DELETE ALL ATTENDANCE ====================
       try {
         await logActivity('delete_all_attendance', 
           `Menghapus semua absensi siswa - ${deletedCount} data dari ${dateArray.length} tanggal (Filter: ${filterDesc})`,
@@ -1579,14 +1595,14 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Delete all error:', error);
       alert('❌ Gagal menghapus semua data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
       try {
-        await logActivity('delete_all_attendance_error', 
-          `Gagal hapus semua data: ${error.message}`,
-          user
-        );
+        await logError(user, `Delete all attendance failed: ${error.message}`, 'AttendanceTab/deleteAll');
       } catch (e) {
         console.warn('⚠️ Logging failed:', e);
       }
+      
     } finally {
       setDeleteAllLoading(false);
     }
@@ -1625,9 +1641,11 @@ Segera lakukan absensi melalui sistem.
       link.click();
       URL.revokeObjectURL(link.href);
 
+      // ==================== ✅ LOG EXPORT EXCEL ====================
       (async () => {
         try {
-          await logActivity('export_attendance_excel', `Ekspor absensi siswa ke Excel - ${filteredData.length} data`, user);
+          await logExportData(user, 'Attendance Excel', filteredData.length);
+          console.log('📝 Export Excel activity logged');
         } catch (e) {
           console.warn('⚠️ Logging failed:', e);
         }
@@ -1636,6 +1654,16 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Export Excel error:', error);
       alert('❌ Gagal mengekspor data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      (async () => {
+        try {
+          await logError(user, `Export Excel failed: ${error.message}`, 'AttendanceTab/exportExcel');
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
     } finally {
       setExportLoading(false);
     }
@@ -1783,9 +1811,11 @@ Segera lakukan absensi melalui sistem.
       `);
       printWindow.document.close();
 
+      // ==================== ✅ LOG EXPORT PDF ====================
       (async () => {
         try {
-          await logActivity('export_attendance_pdf', `Ekspor absensi siswa ke PDF - ${filteredData.length} data`, user);
+          await logExportData(user, 'Attendance PDF', filteredData.length);
+          console.log('📝 Export PDF activity logged');
         } catch (e) {
           console.warn('⚠️ Logging failed:', e);
         }
@@ -1794,6 +1824,16 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Export PDF error:', error);
       alert('❌ Gagal mengekspor data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      (async () => {
+        try {
+          await logError(user, `Export PDF failed: ${error.message}`, 'AttendanceTab/exportPDF');
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
     } finally {
       setExportLoading(false);
     }

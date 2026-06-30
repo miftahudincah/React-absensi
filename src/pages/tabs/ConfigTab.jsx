@@ -2,6 +2,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ref, onValue, set, update, remove } from 'firebase/database';
 import { db, auth } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logSaveSchoolName,
+  logUploadSchoolLogo,
+  logRemoveSchoolLogo,
+  logSaveClasses,
+  logSaveMajors,
+  logUpdateSchoolType,
+  logUpdateGlobalDelay,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './ConfigTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -201,12 +214,17 @@ const ConfigTab = ({ user }) => {
       await set(ref(db, 'system_config/schoolName'), schoolName.trim());
       setMessage({ text: '✅ Nama sekolah berhasil diperbarui!', type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('save_school_name', `Mengubah nama sekolah menjadi "${schoolName.trim()}"`);
-      }
+      // ==================== ✅ LOG SAVE SCHOOL NAME ====================
+      await logSaveSchoolName(user, schoolName.trim());
+      console.log('📝 Save school name activity logged');
+      
     } catch (error) {
       console.error('Save school name error:', error);
       setMessage({ text: '❌ Gagal menyimpan nama sekolah: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Save school name failed: ${error.message}`, 'ConfigTab/saveSchoolName');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -292,12 +310,17 @@ const ConfigTab = ({ user }) => {
       setUploadProgress(100);
       setMessage({ text: '✅ Logo sekolah berhasil diperbarui!', type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('upload_school_logo', 'Mengupload logo sekolah baru');
-      }
+      // ==================== ✅ LOG UPLOAD SCHOOL LOGO ====================
+      await logUploadSchoolLogo(user);
+      console.log('📝 Upload school logo activity logged');
+      
     } catch (error) {
       console.error('Upload logo error:', error);
       setMessage({ text: '❌ Gagal upload logo: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Upload school logo failed: ${error.message}`, 'ConfigTab/uploadLogo');
+      
     } finally {
       setUploadingLogo(false);
       setUploadProgress(0);
@@ -326,12 +349,17 @@ const ConfigTab = ({ user }) => {
 
       setMessage({ text: '✅ Logo sekolah berhasil dihapus!', type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('remove_school_logo', 'Menghapus logo sekolah');
-      }
+      // ==================== ✅ LOG REMOVE SCHOOL LOGO ====================
+      await logRemoveSchoolLogo(user);
+      console.log('📝 Remove school logo activity logged');
+      
     } catch (error) {
       console.error('Remove logo error:', error);
       setMessage({ text: '❌ Gagal menghapus logo: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Remove school logo failed: ${error.message}`, 'ConfigTab/removeLogo');
+      
     } finally {
       setUploadingLogo(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -359,12 +387,17 @@ const ConfigTab = ({ user }) => {
       setClasses(newClasses);
       setMessage({ text: `✅ Tipe sekolah berhasil diubah menjadi ${schoolType.toUpperCase()}!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('update_school_type', `Mengubah tipe sekolah menjadi ${schoolType}`);
-      }
+      // ==================== ✅ LOG UPDATE SCHOOL TYPE ====================
+      await logUpdateSchoolType(user, schoolType);
+      console.log('📝 Update school type activity logged');
+      
     } catch (error) {
       console.error('Save school type error:', error);
       setMessage({ text: '❌ Gagal menyimpan tipe sekolah: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Save school type failed: ${error.message}`, 'ConfigTab/saveSchoolType');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -388,12 +421,20 @@ const ConfigTab = ({ user }) => {
       
       setMessage({ text: '✅ Jam masuk/pulang berhasil diperbarui!', type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('save_time_settings', `Mengubah jam masuk ${checkInTime}, jam pulang ${checkOutTime}, toleransi ${lateThreshold} menit`);
-      }
+      // ==================== ✅ LOG SAVE TIME SETTINGS ====================
+      await logActivity('save_time_settings', 
+        `Mengubah jam masuk ${checkInTime}, jam pulang ${checkOutTime}, toleransi ${lateThreshold} menit`,
+        user
+      );
+      console.log('📝 Save time settings activity logged');
+      
     } catch (error) {
       console.error('Save time settings error:', error);
       setMessage({ text: '❌ Gagal menyimpan jam masuk/pulang: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Save time settings failed: ${error.message}`, 'ConfigTab/saveTimeSettings');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -407,13 +448,18 @@ const ConfigTab = ({ user }) => {
       await update(ref(db, 'school_config'), { workDays });
       setMessage({ text: '✅ Hari kerja berhasil diperbarui!', type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        const workDaysList = Object.keys(workDays).filter(day => workDays[day]).join(', ');
-        window.logActivity('save_work_days', `Mengubah hari kerja: ${workDaysList}`);
-      }
+      // ==================== ✅ LOG SAVE WORK DAYS ====================
+      const workDaysList = Object.keys(workDays).filter(day => workDays[day]).join(', ');
+      await logActivity('save_work_days', `Mengubah hari kerja: ${workDaysList}`, user);
+      console.log('📝 Save work days activity logged');
+      
     } catch (error) {
       console.error('Save work days error:', error);
       setMessage({ text: '❌ Gagal menyimpan hari kerja: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Save work days failed: ${error.message}`, 'ConfigTab/saveWorkDays');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -449,12 +495,17 @@ const ConfigTab = ({ user }) => {
       
       setMessage({ text: `✅ Hari libur "${holidayName.trim()}" berhasil ditambahkan!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('add_holiday', `Menambahkan hari libur "${holidayName.trim()}" pada ${holidayDate}`);
-      }
+      // ==================== ✅ LOG ADD HOLIDAY ====================
+      await logActivity('add_holiday', `Menambahkan hari libur "${holidayName.trim()}" pada ${holidayDate}`, user);
+      console.log('📝 Add holiday activity logged');
+      
     } catch (error) {
       console.error('Add holiday error:', error);
       setMessage({ text: '❌ Gagal menambahkan hari libur: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Add holiday failed: ${error.message}`, 'ConfigTab/addHoliday');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -472,12 +523,17 @@ const ConfigTab = ({ user }) => {
       setHolidays(holidays.filter(h => h.id !== holidayId));
       setMessage({ text: `🗑️ Hari libur "${holidayName}" berhasil dihapus!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('remove_holiday', `Menghapus hari libur "${holidayName}"`);
-      }
+      // ==================== ✅ LOG REMOVE HOLIDAY ====================
+      await logActivity('remove_holiday', `Menghapus hari libur "${holidayName}"`, user);
+      console.log('📝 Remove holiday activity logged');
+      
     } catch (error) {
       console.error('Remove holiday error:', error);
       setMessage({ text: '❌ Gagal menghapus hari libur: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Remove holiday failed: ${error.message}`, 'ConfigTab/removeHoliday');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -518,12 +574,20 @@ const ConfigTab = ({ user }) => {
         }
       }
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('save_reminder_settings', `Mengubah pengaturan pengingat: enabled=${reminderEnabled}, delay=${reminderDelay}min`);
-      }
+      // ==================== ✅ LOG SAVE REMINDER SETTINGS ====================
+      await logActivity('save_reminder_settings', 
+        `enabled=${reminderEnabled}, delay=${reminderDelay}min, interval=${reminderInterval}min, maxAttempts=${reminderMaxAttempts}, cooldown=${reminderCooldown}min`,
+        user
+      );
+      console.log('📝 Save reminder settings activity logged');
+      
     } catch (error) {
       console.error('Save reminder settings error:', error);
       setMessage({ text: '❌ Gagal menyimpan pengaturan pengingat: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Save reminder settings failed: ${error.message}`, 'ConfigTab/saveReminder');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -551,12 +615,17 @@ const ConfigTab = ({ user }) => {
       setNewClass('');
       setMessage({ text: `✅ Kelas "${className}" berhasil ditambahkan!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('add_class', `Menambahkan kelas "${className}"`);
-      }
+      // ==================== ✅ LOG ADD CLASS ====================
+      await logSaveClasses(user, updatedClasses);
+      console.log('📝 Add class activity logged');
+      
     } catch (error) {
       console.error('Add class error:', error);
       setMessage({ text: '❌ Gagal menambahkan kelas: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Add class failed: ${error.message}`, 'ConfigTab/addClass');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -574,12 +643,17 @@ const ConfigTab = ({ user }) => {
       setClasses(updatedClasses);
       setMessage({ text: `🗑️ Kelas "${className}" berhasil dihapus!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('remove_class', `Menghapus kelas "${className}"`);
-      }
+      // ==================== ✅ LOG REMOVE CLASS ====================
+      await logSaveClasses(user, updatedClasses);
+      console.log('📝 Remove class activity logged');
+      
     } catch (error) {
       console.error('Remove class error:', error);
       setMessage({ text: '❌ Gagal menghapus kelas: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Remove class failed: ${error.message}`, 'ConfigTab/removeClass');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -607,12 +681,17 @@ const ConfigTab = ({ user }) => {
       setNewMajor('');
       setMessage({ text: `✅ Jurusan "${majorName}" berhasil ditambahkan!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('add_major', `Menambahkan jurusan "${majorName}"`);
-      }
+      // ==================== ✅ LOG ADD MAJOR ====================
+      await logSaveMajors(user, updatedMajors);
+      console.log('📝 Add major activity logged');
+      
     } catch (error) {
       console.error('Add major error:', error);
       setMessage({ text: '❌ Gagal menambahkan jurusan: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Add major failed: ${error.message}`, 'ConfigTab/addMajor');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
@@ -630,12 +709,17 @@ const ConfigTab = ({ user }) => {
       setMajors(updatedMajors);
       setMessage({ text: `🗑️ Jurusan "${majorName}" berhasil dihapus!`, type: 'success' });
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('remove_major', `Menghapus jurusan "${majorName}"`);
-      }
+      // ==================== ✅ LOG REMOVE MAJOR ====================
+      await logSaveMajors(user, updatedMajors);
+      console.log('📝 Remove major activity logged');
+      
     } catch (error) {
       console.error('Remove major error:', error);
       setMessage({ text: '❌ Gagal menghapus jurusan: ' + error.message, type: 'error' });
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Remove major failed: ${error.message}`, 'ConfigTab/removeMajor');
+      
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 3000);

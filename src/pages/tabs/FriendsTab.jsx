@@ -2,6 +2,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ref, onValue, off, get, set, update, remove } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logSendFriendRequest,
+  logAcceptFriendRequest,
+  logRejectFriendRequest,
+  logRemoveFriend,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './FriendsTab.css';
 
 const FriendsTab = ({ user, onStartChat }) => {
@@ -489,12 +499,19 @@ const FriendsTab = ({ user, onStartChat }) => {
       await set(ref(db, `friendships/requests/${requestId}`), requestData);
       showToast(`✅ Permintaan pertemanan dikirim ke ${toName}`, 'success');
 
+      // ==================== ✅ LOG SEND FRIEND REQUEST ====================
+      await logSendFriendRequest(user, toName);
+      console.log('📝 Send friend request activity logged');
+
       setSearchEmail('');
       setSearchResult(null);
 
     } catch (error) {
       console.error('Send friend request error:', error);
       showToast('❌ Gagal mengirim permintaan', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Send friend request to ${toName} failed: ${error.message}`, 'FriendsTab/sendRequest');
     }
   }, [user]);
 
@@ -549,6 +566,10 @@ const FriendsTab = ({ user, onStartChat }) => {
 
       showToast(`✅ Anda sekarang berteman dengan ${senderName}!`, 'success');
 
+      // ==================== ✅ LOG ACCEPT FRIEND REQUEST ====================
+      await logAcceptFriendRequest(user, senderName);
+      console.log('📝 Accept friend request activity logged');
+
       setFriendRequests(prev => prev.filter(req => req.id !== requestId));
       setFriendRequestCount(prev => prev - 1);
 
@@ -560,6 +581,9 @@ const FriendsTab = ({ user, onStartChat }) => {
     } catch (error) {
       console.error('Accept friend request error:', error);
       showToast('❌ Gagal menerima permintaan', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Accept friend request from ${fromUid} failed: ${error.message}`, 'FriendsTab/acceptRequest');
     }
   }, [user, getUserFullData]);
 
@@ -576,12 +600,19 @@ const FriendsTab = ({ user, onStartChat }) => {
       await remove(ref(db, `friendships/requests/${requestId}`));
       showToast(`✅ Permintaan pertemanan dari ${senderName} ditolak`, 'info');
 
+      // ==================== ✅ LOG REJECT FRIEND REQUEST ====================
+      await logRejectFriendRequest(user, senderName);
+      console.log('📝 Reject friend request activity logged');
+
       setFriendRequests(prev => prev.filter(req => req.id !== requestId));
       setFriendRequestCount(prev => prev - 1);
 
     } catch (error) {
       console.error('Reject friend request error:', error);
       showToast('❌ Gagal menolak permintaan', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Reject friend request from ${fromUid} failed: ${error.message}`, 'FriendsTab/rejectRequest');
     }
   }, [user, getUserFullData]);
 
@@ -601,6 +632,11 @@ const FriendsTab = ({ user, onStartChat }) => {
       ]);
 
       showToast(`✅ ${friendName} telah dihapus dari daftar teman`, 'success');
+
+      // ==================== ✅ LOG REMOVE FRIEND ====================
+      await logRemoveFriend(user, friendName);
+      console.log('📝 Remove friend activity logged');
+
       setFriendsList(prev => prev.filter(f => f.friendUid !== friendUid));
       setFriendsCount(prev => prev - 1);
 
@@ -610,6 +646,9 @@ const FriendsTab = ({ user, onStartChat }) => {
     } catch (error) {
       console.error('Remove friend error:', error);
       showToast('❌ Gagal menghapus teman', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Remove friend ${friendName} failed: ${error.message}`, 'FriendsTab/removeFriend');
     }
   }, [user]);
 
@@ -621,6 +660,10 @@ const FriendsTab = ({ user, onStartChat }) => {
       showToast('Anda tidak bisa chat dengan orang yang bukan teman!', 'error');
       return;
     }
+
+    // ==================== ✅ LOG START CHAT ====================
+    await logActivity('start_chat_from_friend', `Memulai chat dengan ${friendName}`, user);
+    console.log('📝 Start chat activity logged');
 
     // Gunakan prop onStartChat jika tersedia
     if (onStartChat && typeof onStartChat === 'function') {
@@ -664,11 +707,19 @@ const FriendsTab = ({ user, onStartChat }) => {
       console.log('✅ [FriendsTab] Friend full data:', friendData);
       setSelectedFriend(friendData);
       setShowProfileModal(true);
+      
+      // ==================== ✅ LOG VIEW PROFILE ====================
+      await logActivity('view_friend_profile', `Melihat profil ${friendData.nama || friendUid}`, user);
+      console.log('📝 View friend profile activity logged');
+      
     } catch (error) {
       console.error('❌ [FriendsTab] Load friend profile error:', error);
       showToast('❌ Gagal memuat profil', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `View profile for ${friendUid} failed: ${error.message}`, 'FriendsTab/viewProfile');
     }
-  }, [getUserFullData]);
+  }, [getUserFullData, user]);
 
   // ==================== INITIALIZE LISTENERS ====================
   useEffect(() => {

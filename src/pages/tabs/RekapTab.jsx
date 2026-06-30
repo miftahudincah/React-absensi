@@ -2,6 +2,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logExportRekapExcel,
+  logExportRekapPdf,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './RekapTab.css';
 
 const RekapTab = ({ user }) => {
@@ -285,6 +293,9 @@ const RekapTab = ({ user }) => {
       console.error('❌ Firebase attendance error:', error);
       setError('Gagal memuat data absensi dari server');
       setLoading(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load rekap data: ${error.message}`, 'RekapTab/load');
     });
 
     return () => {
@@ -498,6 +509,19 @@ const RekapTab = ({ user }) => {
   const exportToExcel = () => {
     if (!canExport) {
       alert('Anda tidak memiliki akses untuk mengekspor data!');
+      
+      // ==================== ❌ LOG EXPORT DENIED ====================
+      (async () => {
+        try {
+          await logActivity('export_rekap_excel_denied', 
+            `User ${user?.nama} (${user?.role}) mencoba export Excel - DITOLAK`,
+            user
+          );
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
       return;
     }
     
@@ -536,9 +560,30 @@ const RekapTab = ({ user }) => {
       URL.revokeObjectURL(link.href);
       
       alert('✅ Data berhasil diekspor ke Excel!');
+      
+      // ==================== ✅ LOG EXPORT EXCEL ====================
+      (async () => {
+        try {
+          await logExportRekapExcel(user, sortedRekap.length);
+          console.log('📝 Export rekap Excel activity logged');
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
     } catch (error) {
       console.error('Export Excel error:', error);
       alert('❌ Gagal mengekspor data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      (async () => {
+        try {
+          await logError(user, `Export rekap Excel failed: ${error.message}`, 'RekapTab/exportExcel');
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
     } finally {
       setExportLoading(false);
     }
@@ -547,6 +592,19 @@ const RekapTab = ({ user }) => {
   const exportToPDF = () => {
     if (!canExport) {
       alert('Anda tidak memiliki akses untuk mengekspor data!');
+      
+      // ==================== ❌ LOG EXPORT DENIED ====================
+      (async () => {
+        try {
+          await logActivity('export_rekap_pdf_denied', 
+            `User ${user?.nama} (${user?.role}) mencoba export PDF - DITOLAK`,
+            user
+          );
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
       return;
     }
     
@@ -695,9 +753,29 @@ const RekapTab = ({ user }) => {
         }
       }, 500);
       
+      // ==================== ✅ LOG EXPORT PDF ====================
+      (async () => {
+        try {
+          await logExportRekapPdf(user, sortedRekap.length);
+          console.log('📝 Export rekap PDF activity logged');
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
     } catch (error) {
       console.error('Export PDF error:', error);
       alert('❌ Gagal mengekspor data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      (async () => {
+        try {
+          await logError(user, `Export rekap PDF failed: ${error.message}`, 'RekapTab/exportPDF');
+        } catch (e) {
+          console.warn('⚠️ Logging failed:', e);
+        }
+      })();
+      
     } finally {
       setExportLoading(false);
     }

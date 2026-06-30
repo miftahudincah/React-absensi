@@ -2,6 +2,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ref, onValue, push, update, remove, serverTimestamp, get, set } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logCreateIzin,
+  logApproveIzin,
+  logRejectIzin,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './IzinTab.css';
 
 // API Base URL
@@ -331,6 +340,9 @@ const IzinTab = ({ user }) => {
       console.error('Error loading izin:', error);
       setError('Gagal memuat data izin: ' + error.message);
       setLoading(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load izin data: ${error.message}`, 'IzinTab/load');
     });
 
     return () => unsubscribe();
@@ -453,6 +465,10 @@ const IzinTab = ({ user }) => {
 
       showToast('✅ Izin berhasil diajukan! Menunggu persetujuan.', 'success');
 
+      // ==================== ✅ LOG CREATE IZIN ====================
+      await logCreateIzin(user, `${type}: ${studentName} (${startDate} - ${endDate})`);
+      console.log('📝 Create izin activity logged');
+
       setFormData({
         type: 'sakit',
         startDate: '',
@@ -468,13 +484,13 @@ const IzinTab = ({ user }) => {
 
       setShowModal(false);
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('submit_izin', `Ajukan izin ${type}: ${studentName} (${startDate} - ${endDate})`);
-      }
-
     } catch (error) {
       console.error('Submit izin error:', error);
       showToast('❌ Gagal mengajukan izin: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Submit izin failed: ${error.message}`, 'IzinTab/submit');
+      
     } finally {
       setSubmitting(false);
     }
@@ -520,15 +536,16 @@ const IzinTab = ({ user }) => {
         );
       }
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('approve_izin', 
-          `Menyetujui izin ${studentName} (${izin.startDate} - ${izin.endDate}) - ${result.insertedCount || 0} absensi ditambahkan`
-        );
-      }
+      // ==================== ✅ LOG APPROVE IZIN ====================
+      await logApproveIzin(user, izinId, studentName);
+      console.log('📝 Approve izin activity logged');
 
     } catch (error) {
       console.error('Approve izin error:', error);
       showToast('❌ Gagal menyetujui izin: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Approve izin for ${studentName} failed: ${error.message}`, 'IzinTab/approve');
     }
   };
 
@@ -563,13 +580,16 @@ const IzinTab = ({ user }) => {
 
       showToast(`❌ Izin ${studentName} ditolak.`, 'warning');
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('reject_izin', `Menolak izin ${studentName}: ${reason}`);
-      }
+      // ==================== ✅ LOG REJECT IZIN ====================
+      await logRejectIzin(user, izinId, studentName);
+      console.log('📝 Reject izin activity logged');
 
     } catch (error) {
       console.error('Reject izin error:', error);
       showToast('❌ Gagal menolak izin: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Reject izin for ${studentName} failed: ${error.message}`, 'IzinTab/reject');
     }
   };
 
@@ -612,13 +632,19 @@ const IzinTab = ({ user }) => {
 
       showToast(`🗑️ Izin ${studentName} berhasil dihapus! Data absensi tetap terjaga.`, 'success');
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_izin', `Menghapus izin ${studentName} (${izin?.status || 'unknown'}) - absensi tidak terpengaruh`);
-      }
+      // ==================== ✅ LOG DELETE IZIN ====================
+      await logActivity('delete_izin', 
+        `Menghapus izin ${studentName} (${izin?.status || 'unknown'}) - absensi tidak terpengaruh`,
+        user
+      );
+      console.log('📝 Delete izin activity logged');
 
     } catch (error) {
       console.error('Delete izin error:', error);
       showToast('❌ Gagal menghapus izin: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete izin for ${studentName} failed: ${error.message}`, 'IzinTab/delete');
     }
   };
 

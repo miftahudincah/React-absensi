@@ -2,6 +2,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ref, onValue, off, get, set, update, remove, runTransaction } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logSendMessage,
+  logClearChat,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './ChatTab.css';
 
 // API Base URL
@@ -507,6 +515,10 @@ const ChatTab = ({ user }) => {
         })
       ]);
 
+      // ==================== ✅ LOG SEND MESSAGE ====================
+      await logSendMessage(user, friendData.nama || currentChatWith, message);
+      console.log('📝 Send message activity logged');
+
       setMessageInput('');
       if (inputRef.current) inputRef.current.focus();
       scrollToBottom();
@@ -514,6 +526,10 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('Send message error:', error);
       showToast('❌ Gagal mengirim pesan', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Send message failed to ${friendData?.nama || currentChatWith}: ${error.message}`, 'ChatTab/sendMessage');
+      
     } finally {
       setSending(false);
     }
@@ -587,11 +603,22 @@ const ChatTab = ({ user }) => {
         })
       ]);
 
+      // ==================== ✅ LOG SEND IMAGE ====================
+      await logActivity('send_image', 
+        `Mengirim gambar ke ${friendData.nama || currentChatWith}`,
+        user
+      );
+      console.log('📝 Send image activity logged');
+
       scrollToBottom();
 
     } catch (error) {
       console.error('Send image error:', error);
       showToast('❌ Gagal mengirim gambar: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Send image failed to ${friendData?.nama || currentChatWith}: ${error.message}`, 'ChatTab/sendImage');
+      
     } finally {
       setUploadingImage(false);
     }
@@ -633,6 +660,14 @@ const ChatTab = ({ user }) => {
         console.log('✅ Pesan dihapus dari sisi user, menunggu teman juga menghapus');
       }
 
+      // ==================== ✅ LOG DELETE IMAGE ====================
+      const friendData = await getUserData(friendUid);
+      await logActivity('delete_image_message', 
+        `Menghapus gambar dari chat dengan ${friendData?.nama || friendUid}`,
+        user
+      );
+      console.log('📝 Delete image activity logged');
+
       // Refresh chat list dan messages
       if (currentChatWith === friendUid) {
         loadChatMessages(friendUid);
@@ -642,8 +677,11 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('❌ Delete image message error:', error);
       showToast('❌ Gagal menghapus pesan', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete image message failed: ${error.message}`, 'ChatTab/deleteImage');
     }
-  }, [user?.uid, currentChatWith, loadChatMessages, loadChatList, deleteImageFromSupabase, isSupabaseImage]);
+  }, [user?.uid, currentChatWith, loadChatMessages, loadChatList, deleteImageFromSupabase, isSupabaseImage, getUserData]);
 
   // ==================== DELETE MESSAGE ====================
   const deleteMessage = useCallback(async (friendUid, messageId) => {
@@ -693,6 +731,14 @@ const ChatTab = ({ user }) => {
         }
       }
 
+      // ==================== ✅ LOG DELETE MESSAGE ====================
+      const friendData = await getUserData(friendUid);
+      await logActivity('delete_chat_message', 
+        `Menghapus pesan dari chat dengan ${friendData?.nama || friendUid}`,
+        user
+      );
+      console.log('📝 Delete message activity logged');
+
       if (currentChatWith === friendUid) {
         loadChatMessages(friendUid);
       }
@@ -701,8 +747,11 @@ const ChatTab = ({ user }) => {
     } catch (error) {
       console.error('Delete message error:', error);
       showToast('❌ Gagal menghapus pesan', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete message failed: ${error.message}`, 'ChatTab/deleteMessage');
     }
-  }, [user?.uid, currentChatWith, loadChatMessages, loadChatList, handleDeleteImageMessage]);
+  }, [user?.uid, currentChatWith, loadChatMessages, loadChatList, handleDeleteImageMessage, getUserData]);
 
   // ==================== CLEAR CHAT ====================
   const clearChat = useCallback(async (friendUid) => {
@@ -767,9 +816,16 @@ const ChatTab = ({ user }) => {
       await loadChatList();
       showToast(`✅ Chat dengan ${friendName} telah dibersihkan`, 'success');
 
+      // ==================== ✅ LOG CLEAR CHAT ====================
+      await logClearChat(user, friendName);
+      console.log('📝 Clear chat activity logged');
+
     } catch (error) {
       console.error('Clear chat error:', error);
       showToast('❌ Gagal membersihkan chat', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Clear chat failed with ${friendName}: ${error.message}`, 'ChatTab/clearChat');
     }
   }, [user?.uid, currentChatWith, loadChatList, deleteImageFromSupabase, isSupabaseImage]);
 
@@ -784,11 +840,21 @@ const ChatTab = ({ user }) => {
       }
       setSelectedFriend({ uid: friendUid, ...friendData });
       setShowProfileModal(true);
+      
+      // ==================== ✅ LOG VIEW PROFILE ====================
+      await logActivity('view_chat_profile', 
+        `Melihat profil ${friendData.nama || friendUid} dari chat`,
+        user
+      );
+      
     } catch (error) {
       console.error('Load friend profile error:', error);
       showToast('❌ Gagal memuat profil', 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `View profile failed for ${friendUid}: ${error.message}`, 'ChatTab/viewProfile');
     }
-  }, []);
+  }, [user]);
 
   // ==================== SETUP INBOX LISTENER ====================
   useEffect(() => {
