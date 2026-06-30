@@ -6,9 +6,11 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   fetchSignInMethodsForEmail,
-  signOut // ✅ GABUNGKAN signOut DI SINI
+  signOut
 } from 'firebase/auth';
 import { ref, set, update, get } from 'firebase/database';
+// ==================== IMPORT LOGGER ====================
+import { logLogin, logLogout, logGenerateCode, logError, logSystem } from '../utils/logger';
 import './AuthPage.css';
 
 // Konfigurasi
@@ -17,6 +19,53 @@ const LOGIN_LOCKOUT_DURATION = 60;
 const STORAGE_KEY = 'login_attempts_data';
 const REGISTER_COOLDOWN = 30000;
 const API_BASE_URL = 'https://backendtest-azure.vercel.app';
+
+// ==================== LOAD QR SCANNER LIBRARY ====================
+const loadQrScannerLibrary = () => {
+  return new Promise((resolve, reject) => {
+    // Cek apakah sudah ada
+    if (typeof window.Html5Qrcode !== 'undefined') {
+      resolve(window.Html5Qrcode);
+      return;
+    }
+    
+    // Cek apakah script sudah ada di document
+    const existingScript = document.querySelector('script[src*="html5-qrcode"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => {
+        if (typeof window.Html5Qrcode !== 'undefined') {
+          resolve(window.Html5Qrcode);
+        } else {
+          reject(new Error('Library tidak ditemukan setelah load'));
+        }
+      });
+      existingScript.addEventListener('error', () => {
+        reject(new Error('Gagal memuat library QR scanner'));
+      });
+      return;
+    }
+    
+    // Buat script element baru
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    
+    script.onload = () => {
+      if (typeof window.Html5Qrcode !== 'undefined') {
+        resolve(window.Html5Qrcode);
+      } else {
+        reject(new Error('Library tidak ditemukan setelah load'));
+      }
+    };
+    
+    script.onerror = () => {
+      reject(new Error('Gagal memuat library QR scanner'));
+    };
+    
+    document.head.appendChild(script);
+  });
+};
 
 const AuthPage = ({ onLoginSuccess }) => {
   // State untuk mode
@@ -48,8 +97,25 @@ const AuthPage = ({ onLoginSuccess }) => {
   
   // State QR Scanner
   const [isScanning, setIsScanning] = useState(false);
+  const [libraryLoaded, setLibraryLoaded] = useState(false);
   const html5QrCodeRef = useRef(null);
   const scannerContainerRef = useRef(null);
+
+  // ==================== LOAD LIBRARY ON MOUNT ====================
+  useEffect(() => {
+    const loadLibrary = async () => {
+      try {
+        await loadQrScannerLibrary();
+        setLibraryLoaded(true);
+        console.log('✅ QR Scanner library loaded successfully');
+      } catch (error) {
+        console.warn('⚠️ Failed to load QR scanner library:', error);
+        setError('Gagal memuat library QR scanner. Silakan refresh halaman.');
+      }
+    };
+    
+    loadLibrary();
+  }, []);
 
   // ==================== LOCKOUT FUNCTIONS ====================
   
@@ -192,9 +258,6 @@ const AuthPage = ({ onLoginSuccess }) => {
 
   // ==================== TOKEN MANAGEMENT ====================
   
-  /**
-   * Get JWT token from backend after login
-   */
   const getBackendToken = async (email, password) => {
     try {
       console.log('🔑 Getting backend token for:', email);
@@ -222,9 +285,6 @@ const AuthPage = ({ onLoginSuccess }) => {
     }
   };
 
-  /**
-   * Get Firebase ID token as fallback
-   */
   const getFirebaseToken = async (user) => {
     try {
       console.log('🔑 Getting Firebase ID token...');
@@ -238,9 +298,6 @@ const AuthPage = ({ onLoginSuccess }) => {
     }
   };
 
-  /**
-   * Verify token is saved
-   */
   const verifyTokenSaved = () => {
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -254,12 +311,30 @@ const AuthPage = ({ onLoginSuccess }) => {
 
   // ==================== QR SCANNER ====================
   
-  const openQrScanner = () => {
-    if (typeof window.Html5Qrcode === 'undefined') {
-      setError('Library QR scanner belum dimuat. Muat ulang halaman.');
+  const openQrScanner = async () => {
+    // Cek library
+    if (!libraryLoaded) {
+      setError('📷 Library QR scanner sedang dimuat. Tunggu sebentar...');
+      try {
+        await loadQrScannerLibrary();
+        setLibraryLoaded(true);
+      } catch (error) {
+        setError('❌ Gagal memuat library QR scanner. Silakan refresh halaman.');
+        return;
+      }
+    }
+    
+    // Cek izin kamera
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+      console.error('Camera permission error:', err);
+      setError('❌ Izin kamera diperlukan untuk scan QR. Izinkan akses kamera di browser Anda.');
       return;
     }
     
+    // Hapus container lama jika ada
     const existingContainer = document.getElementById('qr-scanner-container');
     if (existingContainer && existingContainer.parentNode) {
       try {
@@ -271,6 +346,7 @@ const AuthPage = ({ onLoginSuccess }) => {
     
     setIsScanning(true);
     
+    // Buat container baru
     const scannerContainer = document.createElement('div');
     scannerContainer.id = 'qr-scanner-container';
     scannerContainerRef.current = scannerContainer;
@@ -287,19 +363,20 @@ const AuthPage = ({ onLoginSuccess }) => {
     `;
     
     scannerContainer.innerHTML = `
-      <div style="color: white; margin-bottom: 20px; font-size: 18px; display: flex; align-items: center; gap: 20px;">
+      <div style="color: white; margin-bottom: 20px; font-size: 18px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: center;">
         <span>📷 Arahkan kamera ke QR Code</span>
         <button id="close-scanner-btn" 
-                style="padding: 8px 20px; border-radius: 30px; border: none; background: #f44336; color: white; cursor: pointer; font-size: 14px;">
+                style="padding: 10px 24px; border-radius: 30px; border: none; background: #f44336; color: white; cursor: pointer; font-size: 14px; font-weight: bold;">
           ✖ Tutup
         </button>
       </div>
       <div id="qr-reader" style="width: 100%; max-width: 400px; min-height: 300px; background: #000; border-radius: 12px; overflow: hidden;"></div>
-      <div id="qr-reader-results" style="color: #ff9800; margin-top: 15px; padding: 8px; text-align: center; min-height: 30px;"></div>
+      <div id="qr-reader-results" style="color: #ff9800; margin-top: 15px; padding: 8px; text-align: center; min-height: 40px; font-size: 14px;"></div>
     `;
     
     document.body.appendChild(scannerContainer);
     
+    // Event listener untuk tombol tutup
     const closeBtn = document.getElementById('close-scanner-btn');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
@@ -311,21 +388,30 @@ const AuthPage = ({ onLoginSuccess }) => {
     const resultsDiv = document.getElementById('qr-reader-results');
     
     if (!qrReader) {
-      setError('Elemen scanner tidak ditemukan!');
+      setError('❌ Elemen scanner tidak ditemukan!');
       setIsScanning(false);
       return;
     }
     
     try {
+      if (typeof window.Html5Qrcode === 'undefined') {
+        throw new Error('Library QR scanner tidak tersedia. Silakan refresh halaman.');
+      }
+      
       const html5QrCode = new window.Html5Qrcode("qr-reader");
       html5QrCodeRef.current = html5QrCode;
       
       const config = {
-        fps: 10,
+        fps: 15,
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
         disableFlip: false
       };
+      
+      if (resultsDiv) {
+        resultsDiv.innerHTML = '📷 Mengaktifkan kamera...';
+        resultsDiv.style.color = '#2196f3';
+      }
       
       html5QrCode.start(
         { facingMode: "environment" },
@@ -333,23 +419,23 @@ const AuthPage = ({ onLoginSuccess }) => {
         (decodedText) => {
           console.log("✅ QR Code terbaca:", decodedText);
           if (resultsDiv) {
-            resultsDiv.innerHTML = '<span style="color: #4caf50; font-weight: bold;">✅ QR terbaca! Memproses...</span>';
+            resultsDiv.innerHTML = '✅ QR terbaca! Memproses...';
+            resultsDiv.style.color = '#4caf50';
           }
           handleQrScan(decodedText);
-          closeQrScanner();
+          setTimeout(() => closeQrScanner(), 500);
         },
-        () => {
-          if (resultsDiv && !resultsDiv.innerHTML.includes('✅')) {
-            resultsDiv.innerHTML = '<small style="color: #aaa;">🔍 Arahkan kamera ke QR Code...</small>';
-          }
+        (errorMessage) => {
+          // Ignore frequent errors
         }
       ).then(() => {
         setIsScanning(true);
         if (resultsDiv) {
-          resultsDiv.innerHTML = '<small style="color: #4caf50; font-weight: bold;">📷 Kamera aktif. Arahkan ke QR Code.</small>';
+          resultsDiv.innerHTML = '📷 Kamera aktif. Arahkan ke QR Code.';
+          resultsDiv.style.color = '#4caf50';
         }
       }).catch((err) => {
-        console.error("Gagal memulai scanner:", err);
+        console.error("❌ Gagal memulai scanner:", err);
         let errorMsg = "❌ Gagal mengakses kamera. ";
         if (err.message && err.message.includes('NotAllowedError')) {
           errorMsg += "Izin kamera ditolak. Periksa pengaturan browser.";
@@ -361,16 +447,17 @@ const AuthPage = ({ onLoginSuccess }) => {
           errorMsg += "Pastikan menggunakan HTTPS dan izinkan akses kamera.";
         }
         if (resultsDiv) {
-          resultsDiv.innerHTML = `<span style="color: red;">${errorMsg}</span>`;
+          resultsDiv.innerHTML = errorMsg;
+          resultsDiv.style.color = '#f44336';
         }
         setError(errorMsg);
-        setTimeout(() => closeQrScanner(), 3000);
+        setTimeout(() => closeQrScanner(), 4000);
       });
     } catch (err) {
-      console.error("QR Scanner error:", err);
-      setError('Gagal memulai scanner: ' + err.message);
+      console.error("❌ QR Scanner error:", err);
+      setError('❌ Gagal memulai scanner: ' + err.message);
       setIsScanning(false);
-      closeQrScanner();
+      setTimeout(() => closeQrScanner(), 2000);
     }
   };
 
@@ -384,17 +471,18 @@ const AuthPage = ({ onLoginSuccess }) => {
           }
           setIsScanning(false);
         }).catch((e) => {
-          console.warn("Error stopping scanner:", e);
+          console.warn("⚠️ Error stopping scanner:", e);
           html5QrCodeRef.current = null;
           setIsScanning(false);
         });
       } catch (e) {
-        console.warn("Error closing scanner:", e);
+        console.warn("⚠️ Error closing scanner:", e);
         html5QrCodeRef.current = null;
         setIsScanning(false);
       }
     }
     
+    // Hapus container
     const container = document.getElementById('qr-scanner-container');
     if (container) {
       try {
@@ -404,11 +492,11 @@ const AuthPage = ({ onLoginSuccess }) => {
           container.remove();
         }
       } catch (e) {
-        console.warn('Error removing container:', e);
+        console.warn('⚠️ Error removing container:', e);
         try {
           if (container.remove) container.remove();
         } catch (e2) {
-          console.warn('Fallback remove failed:', e2);
+          console.warn('⚠️ Fallback remove failed:', e2);
         }
       }
     }
@@ -418,48 +506,65 @@ const AuthPage = ({ onLoginSuccess }) => {
   };
 
   const handleQrScan = (data) => {
-    console.log("Data QR mentah:", data);
+    console.log("📱 Data QR mentah:", data);
     try {
+      // Coba parse JSON
       const parsed = JSON.parse(data);
+      
       if (parsed.code) {
         setRegCode(parsed.code);
-        if (parsed.studentId) {
-          setFpId(parsed.studentId);
+        
+        // Untuk siswa
+        if (parsed.studentId || parsed.fpId) {
+          const studentId = parsed.studentId || parsed.fpId;
+          setFpId(studentId);
           setRegType('siswa');
           setSuccessMessage('✅ Data QR siswa terisi! Silakan lengkapi email & password.');
-        } else if (parsed.staffId && parsed.email) {
+          return;
+        }
+        
+        // Untuk staff
+        if (parsed.staffId && parsed.email) {
           setRegType('staff');
           setStaffId(parsed.staffId);
           setStaffEmail(parsed.email);
           if (parsed.staffName) {
             setStaffNama(parsed.staffName);
           }
-          setSuccessMessage('✅ Data QR staff terisi! Pastikan ID Staff sudah terisi dengan benar.');
-        } else if (parsed.requireId && parsed.staffId) {
+          setSuccessMessage('✅ Data QR staff terisi! Silakan lengkapi data yang diperlukan.');
+          return;
+        }
+        
+        // Staff dengan ID terikat
+        if (parsed.requireId && parsed.staffId) {
           setRegType('staff');
           setStaffId(parsed.staffId);
           if (parsed.email) setStaffEmail(parsed.email);
           setSuccessMessage('✅ Kode Staff terdeteksi! ID Staff sudah terisi otomatis.');
-        } else {
-          setRegType('staff');
-          setSuccessMessage('✅ Kode registrasi terisi. Silakan lengkapi data staff.');
+          return;
         }
+        
+        // Default: hanya kode
+        setSuccessMessage('✅ Kode registrasi terisi. Pilih role yang sesuai.');
+        return;
+      }
+      
+      // Jika bukan JSON, coba sebagai plain text
+      const maybeCode = data.trim();
+      if (maybeCode.length >= 6) {
+        setRegCode(maybeCode);
+        setSuccessMessage('✅ Kode registrasi terisi. Silakan pilih role dan lengkapi data.');
       } else {
-        const maybeCode = data.trim();
-        if (maybeCode.length > 5) {
-          setRegCode(maybeCode);
-          setSuccessMessage('✅ Kode registrasi terisi. Pilih role yang sesuai.');
-        } else {
-          setError('❌ Format QR tidak dikenali.');
-        }
+        setError('❌ Format QR tidak dikenali. Pastikan QR berisi kode registrasi yang valid.');
       }
     } catch (e) {
+      // Jika parsing JSON gagal, coba sebagai plain text
       const maybeCode = data.trim();
-      if (maybeCode.length > 5) {
+      if (maybeCode.length >= 6) {
         setRegCode(maybeCode);
-        setSuccessMessage('✅ Kode registrasi terisi. Pilih role yang sesuai.');
+        setSuccessMessage('✅ Kode registrasi terisi. Silakan pilih role dan lengkapi data.');
       } else {
-        setError('❌ Format QR tidak dikenali.');
+        setError('❌ Format QR tidak dikenali. Pastikan QR berisi kode registrasi yang valid.');
       }
     }
   };
@@ -540,6 +645,10 @@ const AuthPage = ({ onLoginSuccess }) => {
           console.warn('⚠️ No token available, but login continues');
         }
         
+        // ==================== ✅ LOG LOGIN ====================
+        await logLogin(currentUser);
+        console.log('📝 Login activity logged');
+        
         window.dispatchEvent(new CustomEvent('userLoggedIn', { detail: { user: currentUser } }));
         
         if (onLoginSuccess) {
@@ -548,6 +657,9 @@ const AuthPage = ({ onLoginSuccess }) => {
       } else {
         setError('Data user tidak ditemukan di Database!');
         await signOut(auth);
+        
+        // ==================== ❌ LOG ERROR ====================
+        await logError(null, 'User data not found after login', 'AuthPage/login');
       }
     } catch (error) {
       console.error('❌ Login error:', error);
@@ -576,6 +688,9 @@ const AuthPage = ({ onLoginSuccess }) => {
         }
       }
       setError(msg);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(null, `Login failed: ${msg} (${error.code})`, 'AuthPage/login');
     } finally {
       setIsLoading(false);
     }
@@ -809,6 +924,11 @@ const AuthPage = ({ onLoginSuccess }) => {
         await update(ref(db, `staff/${userData.staffId}`), { userId: user.uid });
       }
       
+      // ==================== ✅ LOG REGISTER ====================
+      const newUser = { uid: user.uid, email, ...userData };
+      await logSystem('register', `User registered: ${email} as ${userRole} (${regType})`);
+      console.log('📝 Registration activity logged');
+      
       setSuccessMessage('✅ Pendaftaran Berhasil! Silakan Login.');
       setMode('login');
       resetForm();
@@ -827,6 +947,9 @@ const AuthPage = ({ onLoginSuccess }) => {
       else if (msg.includes('bukan SISWA')) msg = error.message;
       else msg = 'Registrasi gagal: ' + msg;
       setError(msg);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(null, `Registration failed: ${msg}`, 'AuthPage/register');
     } finally {
       setIsLoading(false);
     }
@@ -846,6 +969,11 @@ const AuthPage = ({ onLoginSuccess }) => {
     
     try {
       await sendPasswordResetEmail(auth, forgotEmail);
+      
+      // ==================== ✅ LOG FORGOT PASSWORD ====================
+      await logSystem('forgot_password', `Password reset requested for: ${forgotEmail}`);
+      console.log('📝 Forgot password activity logged');
+      
       setSuccessMessage(`✅ Link reset password telah dikirim ke ${forgotEmail}`);
       setTimeout(() => {
         setMode('login');
@@ -860,6 +988,9 @@ const AuthPage = ({ onLoginSuccess }) => {
       } else {
         setError('Gagal mengirim: ' + error.message);
       }
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(null, `Forgot password failed: ${error.message} (${error.code})`, 'AuthPage/forgot');
     } finally {
       setIsLoading(false);
     }
@@ -1021,10 +1152,18 @@ const AuthPage = ({ onLoginSuccess }) => {
             onChange={(e) => setRegCode(e.target.value.toUpperCase())}
             required
           />
-          <button type="button" className="btn-qr" onClick={openQrScanner} disabled={isScanning}>
-            📷 Scan QR
+          <button 
+            type="button" 
+            className="btn-qr" 
+            onClick={openQrScanner} 
+            disabled={isScanning || !libraryLoaded}
+          >
+            {isScanning ? '⏳ Scanning...' : '📷 Scan QR'}
           </button>
         </div>
+        {!libraryLoaded && (
+          <small style={{ color: '#ff9800' }}>⏳ Memuat library QR scanner...</small>
+        )}
       </div>
       
       <div className="form-group">
