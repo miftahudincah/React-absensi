@@ -1,0 +1,71 @@
+/* src/components/MarqueeText.css */
+.marquee-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  cursor: default;
+  padding: 4px 0;
+}
+
+.marquee-content {
+  display: inline-block;
+  will-change: transform;
+  transition: transform 0.05s linear;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Efek glow untuk teks berjalan */
+.marquee-container .marquee-content {
+  text-shadow: 0 0 20px rgba(0, 188, 212, 0.3);
+}
+
+/* Gradient fade di ujung kanan & kiri */
+.marquee-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, var(--sidebar-bg, #1a1a2e));
+  pointer-events: none;
+}
+
+.marquee-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 100%;
+  background: linear-gradient(to left, transparent, var(--sidebar-bg, #1a1a2e));
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Warna teks dengan gradien */
+.marquee-content {
+  background: linear-gradient(90deg, #00bcd4, #4dd0e1, #00bcd4);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .marquee-container::before,
+  .marquee-container::after {
+    width: 30px;
+  }
+  
+  .marquee-content {
+    font-size: 18px !important;
+  }
+}
