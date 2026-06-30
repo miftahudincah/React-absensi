@@ -1,12 +1,20 @@
 // src/pages/tabs/StatusTab.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import StatusManager from '../../components/Status/StatusManager';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logCreateStatus,
+  logDeleteStatus,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './StatusTab.css';
 
 const StatusTab = ({ user, onStatusUpdate }) => {
   const [statusUnviewedCount, setStatusUnviewedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewingOwnStatus, setViewingOwnStatus] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   // ==================== HANDLE STATUS UPDATE ====================
   const handleStatusUpdate = useCallback((count) => {
@@ -23,20 +31,43 @@ const StatusTab = ({ user, onStatusUpdate }) => {
     }));
   }, [onStatusUpdate]);
 
-  // ==================== HANDLE VIEW CHANGE ====================
-  const handleViewChange = useCallback((isOwnStatus) => {
-    setViewingOwnStatus(isOwnStatus);
-  }, []);
+  // ==================== LOG STATUS VIEW ====================
+  const logStatusView = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    try {
+      await logActivity('view_status_tab', 
+        `User ${user?.nama || user?.email} membuka halaman Status`,
+        user
+      );
+      console.log('📝 View status tab activity logged');
+    } catch (error) {
+      console.warn('⚠️ Failed to log status view:', error);
+    }
+  }, [user]);
 
   // ==================== CHECK IF STATUS SYSTEM IS READY ====================
   useEffect(() => {
     // Dispatch event to initialize status system
-    const initStatus = () => {
+    const initStatus = async () => {
       if (user?.uid) {
-        window.dispatchEvent(new CustomEvent('uiReady', {
-          detail: { currentUser: user }
-        }));
-        setIsLoading(false);
+        try {
+          window.dispatchEvent(new CustomEvent('uiReady', {
+            detail: { currentUser: user }
+          }));
+          setIsLoading(false);
+          setInitialized(true);
+          
+          // ==================== ✅ LOG STATUS TAB OPEN ====================
+          await logStatusView();
+          
+        } catch (error) {
+          console.error('❌ Error initializing status:', error);
+          setIsLoading(false);
+          
+          // ==================== ❌ LOG ERROR ====================
+          await logError(user, `Failed to initialize status: ${error.message}`, 'StatusTab/init');
+        }
       }
     };
 
@@ -54,7 +85,7 @@ const StatusTab = ({ user, onStatusUpdate }) => {
       
       return () => clearInterval(checkUser);
     }
-  }, [user]);
+  }, [user, logStatusView]);
 
   // ==================== LISTEN FOR STATUS UPDATES ====================
   useEffect(() => {
@@ -64,20 +95,47 @@ const StatusTab = ({ user, onStatusUpdate }) => {
       }
     };
     
-    const handleStatusViewChange = (e) => {
-      if (e.detail && typeof e.detail.isOwnStatus === 'boolean') {
-        setViewingOwnStatus(e.detail.isOwnStatus);
+    window.addEventListener('statusBadgeUpdate', handleStatusBadgeUpdate);
+    
+    // ==================== LISTEN FOR STATUS CREATE/DELETE EVENTS ====================
+    const handleStatusCreated = async (e) => {
+      if (e.detail && e.detail.statusData && user?.uid) {
+        try {
+          await logCreateStatus(user, e.detail.statusData);
+          console.log('📝 Status created activity logged from StatusTab');
+        } catch (error) {
+          console.warn('⚠️ Failed to log status create:', error);
+        }
       }
     };
     
-    window.addEventListener('statusBadgeUpdate', handleStatusBadgeUpdate);
-    window.addEventListener('statusViewChange', handleStatusViewChange);
+    const handleStatusDeleted = async (e) => {
+      if (e.detail && e.detail.statusId && user?.uid) {
+        try {
+          await logDeleteStatus(user, e.detail.statusId);
+          console.log('📝 Status deleted activity logged from StatusTab');
+        } catch (error) {
+          console.warn('⚠️ Failed to log status delete:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('statusCreated', handleStatusCreated);
+    window.addEventListener('statusDeleted', handleStatusDeleted);
     
     return () => {
       window.removeEventListener('statusBadgeUpdate', handleStatusBadgeUpdate);
-      window.removeEventListener('statusViewChange', handleStatusViewChange);
+      window.removeEventListener('statusCreated', handleStatusCreated);
+      window.removeEventListener('statusDeleted', handleStatusDeleted);
     };
-  }, []);
+  }, [user]);
+
+  // ==================== LOG STATUS VIEW ON MOUNT ====================
+  useEffect(() => {
+    if (user?.uid && !isLoading) {
+      logStatusView();
+    }
+  }, [user, isLoading, logStatusView]);
 
   // ==================== RENDER ====================
   if (!user) {
@@ -105,44 +163,76 @@ const StatusTab = ({ user, onStatusUpdate }) => {
 
   return (
     <div className="status-tab-container">
-      {/* Header */}
+      {/* ===== HEADER ===== */}
       <div className="status-tab-header">
-        <div className="status-tab-title">
-          <span className="status-tab-icon">📸</span>
-          <h2>Status</h2>
-          {statusUnviewedCount > 0 && (
-            <span className="status-tab-badge">{statusUnviewedCount} baru</span>
-          )}
+        <div className="status-tab-header-left">
+          <div className="status-tab-title">
+            <span className="status-tab-icon">📸</span>
+            <h2>Status</h2>
+            {statusUnviewedCount > 0 && (
+              <span className="status-tab-badge">{statusUnviewedCount} baru</span>
+            )}
+          </div>
+          <p className="status-tab-subtitle">
+            Lihat dan bagikan status dengan teman-teman Anda
+          </p>
         </div>
-        <div className="status-tab-subtitle">
-          <p>{viewingOwnStatus ? 'Lihat dan bagikan status dengan teman-teman Anda' : 'Lihat status teman Anda'}</p>
+        <div className="status-tab-header-right">
+          <button 
+            className="status-tab-refresh-btn"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('refreshStatuses'));
+              console.log('🔄 Status refreshed manually');
+            }}
+            title="Refresh status"
+          >
+            🔄
+          </button>
         </div>
       </div>
 
-      {/* Status Manager - with privacy props */}
+      {/* ===== STATUS MANAGER ===== */}
       <div className="status-tab-content">
         <StatusManager 
           user={user}
           onStatusUpdate={handleStatusUpdate}
-          onViewChange={handleViewChange}
           activeTab="status"
-          showViewers={viewingOwnStatus} // Hanya tampilkan viewer jika melihat status sendiri
         />
       </div>
 
-      {/* Info Footer */}
+      {/* ===== INFO FOOTER ===== */}
       <div className="status-tab-footer">
-        <div className="status-tab-info">
-          <span>💡</span>
-          <span>Status akan otomatis hilang setelah 24 jam</span>
+        <div className="status-tab-footer-grid">
+          <div className="status-tab-info">
+            <span className="status-tab-info-icon">💡</span>
+            <span className="status-tab-info-text">Status akan otomatis hilang setelah 24 jam</span>
+          </div>
+          <div className="status-tab-info">
+            <span className="status-tab-info-icon">👥</span>
+            <span className="status-tab-info-text">Hanya teman yang dapat melihat status Anda</span>
+          </div>
+          <div className="status-tab-info">
+            <span className="status-tab-info-icon">🔒</span>
+            <span className="status-tab-info-text">Status Anda aman dan hanya terlihat oleh teman</span>
+          </div>
+          {initialized && (
+            <div className="status-tab-info status-tab-info-success">
+              <span className="status-tab-info-icon">✅</span>
+              <span className="status-tab-info-text">Sistem status siap digunakan</span>
+            </div>
+          )}
         </div>
-        <div className="status-tab-info">
-          <span>👥</span>
-          <span>Hanya teman yang dapat melihat status Anda</span>
-        </div>
-        <div className="status-tab-info">
-          <span>🔒</span>
-          <span>Status Anda aman dan hanya terlihat oleh teman</span>
+        
+        {/* Status Stats */}
+        <div className="status-tab-stats">
+          <span className="status-tab-stat">
+            <span className="stat-dot active"></span>
+            {statusUnviewedCount > 0 ? (
+              <span>{statusUnviewedCount} status baru</span>
+            ) : (
+              <span>Semua status telah dilihat</span>
+            )}
+          </span>
         </div>
       </div>
     </div>

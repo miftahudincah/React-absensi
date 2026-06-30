@@ -2,6 +2,18 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logAddStaff,
+  logEditStaff,
+  logDeleteStaff,
+  logCreateStaffAccount,
+  logGenerateCode,
+  logDeleteCode,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './StaffTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -297,6 +309,17 @@ Segera lakukan absensi melalui sistem.
   const sendBulkReminderStaff = async () => {
     if (!canSendReminder) {
       showToast('⚠️ Anda tidak memiliki akses untuk mengirim pengingat!', 'error');
+      
+      // ==================== ❌ LOG BULK REMINDER DENIED ====================
+      try {
+        await logActivity('send_bulk_reminder_staff_tab_denied', 
+          `User ${user?.nama} (${role}) mencoba kirim pengingat staff - DITOLAK`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -342,8 +365,14 @@ Segera lakukan absensi melalui sistem.
 
     showToast(`✅ Pengingat terkirim!\n📨 Berhasil: ${successCount}\n❌ Gagal: ${failCount}`, 'success');
 
-    if (typeof window.logActivity === 'function') {
-      window.logActivity('send_bulk_reminder_staff_tab', `Mengirim pengingat WhatsApp ke ${successCount} staff dari halaman Staff`);
+    // ==================== ✅ LOG BULK REMINDER ====================
+    try {
+      await logActivity('send_bulk_reminder_staff_tab', 
+        `Mengirim pengingat WhatsApp ke ${successCount} staff dari halaman Staff`,
+        user
+      );
+    } catch (e) {
+      console.warn('⚠️ Logging failed:', e);
     }
   };
 
@@ -384,6 +413,9 @@ Segera lakukan absensi melalui sistem.
       console.error('Firebase staff error:', error);
       setError('Gagal memuat data staff dari server');
       setLoading(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load staff data: ${error.message}`, 'StaffTab/load');
     });
 
     const usersAuthRef = ref(db, 'users_auth');
@@ -462,6 +494,9 @@ Segera lakukan absensi melalui sistem.
     }, (error) => {
       console.error('Firebase staff attendance error:', error);
       setLoadingAttendance(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load staff attendance data: ${error.message}`, 'StaffTab/loadAttendance');
     });
 
     return () => {
@@ -718,6 +753,15 @@ Segera lakukan absensi melalui sistem.
 
       await set(ref(db, `staff/${staffId}`), staffPayload);
       
+      // ==================== ✅ LOG ADD/EDIT STAFF ====================
+      if (modalMode === 'add') {
+        await logAddStaff(user, formData);
+        console.log('📝 Add staff activity logged');
+      } else {
+        await logEditStaff(user, staffId, formData);
+        console.log('📝 Edit staff activity logged');
+      }
+      
       showToast(
         modalMode === 'add' 
           ? `✅ Staff ${formData.nama} berhasil ditambahkan! (ID: ${staffId})` 
@@ -746,6 +790,10 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Submit staff error:', error);
       setFormError('❌ Gagal menyimpan data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Submit staff ${modalMode === 'add' ? 'add' : 'edit'} failed: ${error.message}`, 'StaffTab/submit');
+      
     } finally {
       setFormLoading(false);
     }
@@ -756,6 +804,11 @@ Segera lakukan absensi melalui sistem.
     
     try {
       await remove(ref(db, `staff/${staffId}`));
+      
+      // ==================== ✅ LOG DELETE STAFF ====================
+      await logDeleteStaff(user, staffId, staffName);
+      console.log('📝 Delete staff activity logged');
+      
       showToast(`✅ Staff "${staffName}" berhasil dihapus!`, 'success');
       setStaffData(prev => prev.filter(s => s.id !== staffId));
       // Remove from photo cache
@@ -763,6 +816,9 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Delete staff error:', error);
       showToast('❌ Gagal menghapus staff: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete staff ${staffName} failed: ${error.message}`, 'StaffTab/delete');
     }
   };
 
@@ -770,6 +826,17 @@ Segera lakukan absensi melalui sistem.
   const deleteAllStaff = async () => {
     if (!isDeveloper) {
       showToast('❌ Akses ditolak! Hanya role Developer yang dapat menghapus semua data.', 'error');
+      
+      // ==================== ❌ LOG DELETE ALL DENIED ====================
+      try {
+        await logActivity('delete_all_staff_denied', 
+          `User ${user?.nama} (${role}) mencoba hapus semua staff - DITOLAK`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -797,6 +864,17 @@ Segera lakukan absensi melalui sistem.
     const userInput = prompt(confirmMessage);
     if (userInput !== 'HAPUS SEMUA') {
       showToast('❌ Penghapusan dibatalkan.', 'info');
+      
+      // ==================== ❌ LOG DELETE ALL CANCELLED ====================
+      try {
+        await logActivity('delete_all_staff_cancelled', 
+          `Penghapusan semua staff dibatalkan - ${filterDesc}`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -817,9 +895,20 @@ Segera lakukan absensi melalui sistem.
       }
       setStaffData(prev => prev.filter(s => !filteredStaff.some(f => f.id === s.id)));
       showToast(`✅ Berhasil menghapus ${deletedCount} data staff!\n📌 Filter: ${filterDesc}`, 'success');
+      
+      // ==================== ✅ LOG DELETE ALL STAFF ====================
+      await logActivity('delete_all_staff', 
+        `Menghapus semua staff - ${deletedCount} data (Filter: ${filterDesc})`,
+        user
+      );
+      
     } catch (error) {
       console.error('Delete all staff error:', error);
       showToast('❌ Gagal menghapus semua data: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete all staff failed: ${error.message}`, 'StaffTab/deleteAll');
+      
     } finally {
       setDeleteAllLoading(false);
     }
@@ -904,6 +993,10 @@ Segera lakukan absensi melalui sistem.
       setGeneratedCode(code);
       showToast(`✅ Kode untuk ${selectedStaffForCode.nama} (${typeDisplay}) berhasil dibuat!`, 'success');
       
+      // ==================== ✅ LOG GENERATE CODE ====================
+      await logGenerateCode(user, `staff_${typeDisplay}`);
+      console.log('📝 Generate code activity logged');
+      
       const codesRef = ref(db, 'codes');
       const snapshot = await new Promise((resolve) => {
         onValue(codesRef, (snap) => resolve(snap), { onlyOnce: true });
@@ -924,6 +1017,10 @@ Segera lakukan absensi melalui sistem.
     } catch (error) {
       console.error('Generate code error:', error);
       showToast('❌ Gagal membuat kode: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Generate code for ${selectedStaffForCode?.nama} failed: ${error.message}`, 'StaffTab/generateCode');
+      
     } finally {
       setGeneratingCode(false);
     }
@@ -933,6 +1030,13 @@ Segera lakukan absensi melalui sistem.
   const exportToExcel = () => {
     if (!canExport) {
       showToast('Anda tidak memiliki akses untuk mengekspor data!', 'error');
+      
+      // ==================== ❌ LOG EXPORT DENIED ====================
+      logActivity('export_staff_data_excel_denied', 
+        `User ${user?.nama} (${role}) mencoba export Excel staff - DITOLAK`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
       return;
     }
     
@@ -967,9 +1071,21 @@ Segera lakukan absensi melalui sistem.
       URL.revokeObjectURL(link.href);
       
       showToast('✅ Data berhasil diekspor ke Excel!', 'success');
+      
+      // ==================== ✅ LOG EXPORT EXCEL ====================
+      logActivity('export_staff_data_excel', 
+        `Ekspor data staff ke Excel - ${filteredStaff.length} data`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } catch (error) {
       console.error('Export Excel error:', error);
       showToast('❌ Gagal mengekspor data: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Export staff Excel failed: ${error.message}`, 'StaffTab/exportExcel')
+        .catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } finally {
       setExportLoading(false);
     }
@@ -978,6 +1094,13 @@ Segera lakukan absensi melalui sistem.
   const exportToPDF = () => {
     if (!canExport) {
       showToast('Anda tidak memiliki akses untuk mengekspor data!', 'error');
+      
+      // ==================== ❌ LOG EXPORT DENIED ====================
+      logActivity('export_staff_data_pdf_denied', 
+        `User ${user?.nama} (${role}) mencoba export PDF staff - DITOLAK`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
       return;
     }
     
@@ -1071,9 +1194,21 @@ Segera lakukan absensi melalui sistem.
       }, 500);
       
       showToast('✅ Data berhasil diekspor ke PDF!', 'success');
+      
+      // ==================== ✅ LOG EXPORT PDF ====================
+      logActivity('export_staff_data_pdf', 
+        `Ekspor data staff ke PDF - ${filteredStaff.length} data`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } catch (error) {
       console.error('Export PDF error:', error);
       showToast('❌ Gagal mengekspor data: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Export staff PDF failed: ${error.message}`, 'StaffTab/exportPDF')
+        .catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } finally {
       setExportLoading(false);
     }

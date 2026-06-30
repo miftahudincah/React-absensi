@@ -2,8 +2,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ref, onValue, set, remove, update, get } from 'firebase/database';
 import { db } from '../../firebase/config';
-import { auth } from '../../firebase/config';  // ✅ TAMBAHKAN
-import { sendPasswordResetEmail } from 'firebase/auth';  // ✅ TAMBAHKAN
+import { auth } from '../../firebase/config';
+import { sendPasswordResetEmail } from 'firebase/auth';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logUpdateUserRole,
+  logDeleteUser,
+  logResetSystem,
+  logResetUserPassword,
+  logGenerateCode,
+  logDeleteCode,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './UserTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -159,9 +171,9 @@ const UsersTab = ({ user }) => {
 
       showToast(`✅ Role berhasil diubah menjadi ${roleNames[newRole] || newRole}`, 'success');
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('update_user_role', `Mengubah role ${targetUser.name || targetUser.nama} dari ${targetUser.role} menjadi ${newRole}`);
-      }
+      // ==================== ✅ LOG UPDATE USER ROLE ====================
+      await logUpdateUserRole(user, targetUser.name || targetUser.nama, newRole);
+      console.log('📝 Update user role activity logged');
 
       setUsersAuth(prev =>
         prev.map(u => u.uid === uid ? { ...u, role: newRole } : u)
@@ -170,6 +182,9 @@ const UsersTab = ({ user }) => {
     } catch (err) {
       console.error('Error updating role:', err);
       showToast('❌ Gagal mengubah role: ' + err.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Update role for ${targetUser.name} failed: ${err.message}`, 'UsersTab/roleChange');
     }
   };
 
@@ -665,6 +680,10 @@ const UsersTab = ({ user }) => {
       setGeneratedCodesHistory(prev => [code, ...prev].slice(0, 10));
       setShowCodeModal(true);
       
+      // ==================== ✅ LOG GENERATE STUDENT CODE ====================
+      await logGenerateCode(user, `student_${student.name}`);
+      console.log('📝 Generate student code activity logged');
+      
       showToast(`✅ Kode untuk ${student.name} berhasil dibuat!`, 'success');
 
       const codesSnapshot = await get(ref(db, 'codes'));
@@ -690,6 +709,10 @@ const UsersTab = ({ user }) => {
     } catch (err) {
       console.error('Generate code error:', err);
       showToast('❌ Gagal membuat kode: ' + err.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Generate student code for ${student?.name} failed: ${err.message}`, 'UsersTab/generateStudentCode');
+      
     } finally {
       setGenerating(false);
     }
@@ -739,6 +762,10 @@ const UsersTab = ({ user }) => {
       setGeneratedCodesHistory(prev => [code, ...prev].slice(0, 10));
       setShowCodeModal(true);
       
+      // ==================== ✅ LOG GENERATE STAFF CODE ====================
+      await logGenerateCode(user, `staff_${typeDisplay}`);
+      console.log('📝 Generate staff code activity logged');
+      
       showToast(`✅ Kode untuk ${staff.name} (${typeDisplay}) berhasil dibuat!`, 'success');
 
       const codesSnapshot = await get(ref(db, 'codes'));
@@ -764,6 +791,10 @@ const UsersTab = ({ user }) => {
     } catch (err) {
       console.error('Generate code error:', err);
       showToast('❌ Gagal membuat kode: ' + err.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Generate staff code for ${staff?.name} failed: ${err.message}`, 'UsersTab/generateStaffCode');
+      
     } finally {
       setGenerating(false);
     }
@@ -787,9 +818,17 @@ const UsersTab = ({ user }) => {
       await remove(ref(db, `codes/${code}`));
       showToast(`✅ Kode ${code} berhasil dihapus`, 'success');
       setAllCodes(prev => prev.filter(c => c.code !== code));
+      
+      // ==================== ✅ LOG DELETE CODE ====================
+      await logDeleteCode(user, code);
+      console.log('📝 Delete code activity logged');
+      
     } catch (err) {
       console.error('Delete code error:', err);
       showToast('❌ Gagal menghapus kode: ' + err.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete code ${code} failed: ${err.message}`, 'UsersTab/deleteCode');
     }
   };
 
@@ -817,6 +856,10 @@ const UsersTab = ({ user }) => {
       await remove(ref(db, `users_auth/${uid}`));
       showToast(`✅ User "${name}" berhasil dihapus.`, 'success');
       
+      // ==================== ✅ LOG DELETE USER ====================
+      await logDeleteUser(user, name);
+      console.log('📝 Delete user activity logged');
+      
       setUsersAuth(prev => prev.filter(u => u.uid !== uid));
       
       const usersSnapshot = await get(ref(db, 'users'));
@@ -842,11 +885,13 @@ const UsersTab = ({ user }) => {
     } catch (err) {
       console.error('Delete user error:', err);
       showToast('❌ Gagal menghapus user: ' + err.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete user ${name} failed: ${err.message}`, 'UsersTab/deleteUser');
     }
   };
 
   // ==================== SEND RESET PASSWORD (EMAIL + WHATSAPP) ====================
-  // ✅ SUDAH DIPERBAIKI - Menggunakan import dari atas
   const sendResetPassword = async (uid, name, email, phoneNumber) => {
     if (!email || email === '-') {
       showToast('❌ Email tidak ditemukan!', 'error');
@@ -864,7 +909,6 @@ const UsersTab = ({ user }) => {
     try {
       const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
       
-      // ✅ LANGSUNG PAKAI sendPasswordResetEmail YANG SUDAH DI IMPORT
       const actionCodeSettings = {
         url: window.location.origin + '/login',
         handleCodeInApp: false
@@ -949,9 +993,9 @@ const UsersTab = ({ user }) => {
       setResetResult(prev => ({ ...prev, [uid]: resultMsg }));
       showToast(resultMsg, 'success');
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('send_reset_password', `Mengirim link reset password ke ${name || email} (${email}) - WhatsApp: ${whatsappSent ? '✅' : '❌'}`);
-      }
+      // ==================== ✅ LOG RESET PASSWORD ====================
+      await logResetUserPassword(user, name || email);
+      console.log('📝 Reset password activity logged');
 
     } catch (err) {
       console.error('Reset password error:', err);
@@ -967,6 +1011,10 @@ const UsersTab = ({ user }) => {
       
       setResetResult(prev => ({ ...prev, [uid]: errorMsg }));
       showToast(errorMsg, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Reset password for ${name} failed: ${err.message}`, 'UsersTab/resetPassword');
+      
     } finally {
       setResetLoading(prev => ({ ...prev, [uid]: false }));
       
@@ -1049,6 +1097,10 @@ const UsersTab = ({ user }) => {
 
       showToast('✅ RESET ALL BERHASIL! Silakan refresh halaman.', 'success');
 
+      // ==================== ✅ LOG RESET SYSTEM ====================
+      await logResetSystem(user);
+      console.log('📝 Reset system activity logged');
+
       setUsersAuth([]);
       setUsers([]);
       setStaffData([]);
@@ -1065,6 +1117,10 @@ const UsersTab = ({ user }) => {
     } catch (err) {
       console.error('Reset all error:', err);
       showToast('❌ Gagal reset all: ' + err.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Reset all failed: ${err.message}`, 'UsersTab/resetAll');
+      
     } finally {
       setIsResetting(false);
     }

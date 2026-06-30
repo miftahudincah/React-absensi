@@ -2,6 +2,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ref, onValue, set, update, remove, get } from 'firebase/database';
 import { db } from '../../firebase/config';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logAddStudent,
+  logEditStudent,
+  logDeleteStudent,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './StudentsTab.css';
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
@@ -386,6 +395,9 @@ Segera lakukan absensi melalui sistem.
     }, (error) => {
       console.error('❌ Error fetching users:', error);
       setError('Gagal memuat data siswa');
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load students data: ${error.message}`, 'StudentsTab/load');
     });
 
     // ===== AMBIL DATA USER AUTH =====
@@ -407,6 +419,9 @@ Segera lakukan absensi melalui sistem.
       setPhotoCache({});
     }, (error) => {
       console.error('❌ Error fetching users_auth:', error);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load users_auth data: ${error.message}`, 'StudentsTab/loadAuth');
     });
 
     // ===== AMBIL KONFIGURASI SEKOLAH =====
@@ -465,6 +480,9 @@ Segera lakukan absensi melalui sistem.
     }, (error) => {
       console.error('❌ Error fetching attendance:', error);
       setLoadingAttendance(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load attendance data: ${error.message}`, 'StudentsTab/loadAttendance');
     });
 
     setLoading(false);
@@ -607,8 +625,14 @@ Segera lakukan absensi melalui sistem.
 
     showToast(`✅ Pengingat terkirim!\n📨 Berhasil: ${successCount}\n❌ Gagal: ${failCount}`, 'success');
 
-    if (typeof window.logActivity === 'function') {
-      window.logActivity('send_bulk_reminder_siswa', `Mengirim pengingat WhatsApp ke ${successCount} siswa dari halaman Students`);
+    // ==================== ✅ LOG BULK REMINDER ====================
+    try {
+      await logActivity('send_bulk_reminder_siswa', 
+        `Mengirim pengingat WhatsApp ke ${successCount} siswa dari halaman Students`,
+        user
+      );
+    } catch (e) {
+      console.warn('⚠️ Logging failed:', e);
     }
   }, [canSendReminder, attendanceData, filteredStudents, sendStudentReminderNotification, showToast]);
 
@@ -685,14 +709,18 @@ Segera lakukan absensi melalui sistem.
       
       showToast(`✅ Siswa "${nama.trim()}" berhasil ditambahkan!`, 'success');
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('add_student', `Menambahkan siswa ${nama.trim()} (ID: ${id})`);
-      }
+      // ==================== ✅ LOG ADD STUDENT ====================
+      await logAddStudent(user, studentData);
+      console.log('📝 Add student activity logged');
       
       closeAddModal();
     } catch (error) {
       console.error('Add student error:', error);
       showToast('❌ Gagal menambahkan siswa: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Add student ${nama} failed: ${error.message}`, 'StudentsTab/add');
+      
     } finally {
       setAddLoading(false);
     }
@@ -762,10 +790,20 @@ Segera lakukan absensi melalui sistem.
         }
         
         showToast(`✅ Data siswa ${editingStudent.nama} berhasil diupdate!`, 'success');
+        
+        // ==================== ✅ LOG EDIT STUDENT (STAFF) ====================
+        await logActivity('edit_student_staff', 
+          `Staff ${user?.nama} mengupdate data siswa ${editingStudent.nama} (kelas: ${kelas})`,
+          user
+        );
+        
         closeEditModal();
       } catch (error) {
         console.error('Update error:', error);
         showToast('❌ Gagal mengupdate data: ' + error.message, 'error');
+        
+        // ==================== ❌ LOG ERROR ====================
+        await logError(user, `Edit student ${editingStudent.nama} failed: ${error.message}`, 'StudentsTab/edit');
       }
       return;
     }
@@ -803,14 +841,18 @@ Segera lakukan absensi melalui sistem.
       
       showToast(`✅ Data siswa ${editingStudent.nama} berhasil diupdate!`, 'success');
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('edit_student', `Mengupdate data siswa ${editingStudent.nama} (ID: ${editingStudent.id})`);
-      }
+      // ==================== ✅ LOG EDIT STUDENT ====================
+      await logEditStudent(user, editingStudent.id, updateData);
+      console.log('📝 Edit student activity logged');
       
       closeEditModal();
     } catch (error) {
       console.error('Update error:', error);
       showToast('❌ Gagal mengupdate data: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Edit student ${editingStudent.nama} failed: ${error.message}`, 'StudentsTab/edit');
+      
     } finally {
       setEditLoading(false);
     }
@@ -843,13 +885,16 @@ Segera lakukan absensi melalui sistem.
       
       showToast(`✅ Data siswa "${student.nama}" berhasil dihapus!${hasAcc ? ' (Akun juga dihapus)' : ''}`, 'success');
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_student', `Menghapus siswa ${student.nama} (ID: ${student.id})${hasAcc ? ' + akun' : ''}`);
-      }
+      // ==================== ✅ LOG DELETE STUDENT ====================
+      await logDeleteStudent(user, student.id, student.nama);
+      console.log('📝 Delete student activity logged');
       
     } catch (error) {
       console.error('Delete error:', error);
       showToast('❌ Gagal menghapus data: ' + error.message, 'error');
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete student ${student.nama} failed: ${error.message}`, 'StudentsTab/delete');
     }
   }, [canDelete, hasAccount, getUserAuthForStudent, showToast, refreshPhotoCache]);
 
@@ -890,6 +935,17 @@ Segera lakukan absensi melalui sistem.
   const handleDeleteAllStudents = useCallback(async () => {
     if (!canDeleteAll) {
       alert('❌ Akses ditolak! Hanya Developer yang dapat menghapus semua data.');
+      
+      // ==================== ❌ LOG DELETE ALL DENIED ====================
+      try {
+        await logActivity('delete_all_students_denied', 
+          `User ${user?.nama} (${role}) mencoba hapus semua siswa - DITOLAK`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -967,16 +1023,24 @@ Segera lakukan absensi melalui sistem.
       
       alert(resultMsg);
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_all_students_filtered', 
-          `Menghapus ${deletedCount} siswa dengan filter: ${filterDesc} (${deletedAuthCount} akun)`
+      // ==================== ✅ LOG DELETE ALL STUDENTS ====================
+      try {
+        await logActivity('delete_all_students_filtered', 
+          `Menghapus ${deletedCount} siswa dengan filter: ${filterDesc} (${deletedAuthCount} akun)`,
+          user
         );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
       }
 
       closeDeleteAllModal();
     } catch (error) {
       console.error('Delete all error:', error);
       alert('❌ Gagal menghapus data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete all students failed: ${error.message}`, 'StudentsTab/deleteAll');
+      
     } finally {
       setDeleteAllLoading(false);
     }

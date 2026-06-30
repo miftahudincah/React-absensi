@@ -4,6 +4,16 @@ import { ref, onValue, set, remove, update, get } from 'firebase/database';
 import { db } from '../../firebase/config';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement, Filler } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
+// ==================== IMPORT LOGGER ====================
+import { 
+  logActivity,
+  logSimulateStaffAttendanceIn,
+  logSimulateStaffAttendanceOut,
+  logDeleteStaffAttendance,
+  logExportStaffAttendanceExcel,
+  logError,
+  logSystem
+} from '../../utils/logger';
 import './StaffAttendanceTab.css';
 
 // Register ChartJS components
@@ -242,6 +252,17 @@ Segera lakukan absensi melalui sistem.
   const sendBulkReminderStaff = async () => {
     if (!canSimulate) {
       alert('⚠️ Anda tidak memiliki akses untuk mengirim pengingat!');
+      
+      // ==================== ❌ LOG BULK REMINDER DENIED ====================
+      try {
+        await logActivity('send_bulk_reminder_staff_denied', 
+          `User ${user?.nama} (${role}) mencoba kirim pengingat staff - DITOLAK`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -287,8 +308,14 @@ Segera lakukan absensi melalui sistem.
 
     alert(`✅ Pengingat terkirim!\n\n📨 Berhasil: ${successCount}\n❌ Gagal: ${failCount}`);
 
-    if (typeof window.logActivity === 'function') {
-      window.logActivity('send_bulk_reminder_staff', `Mengirim pengingat WhatsApp ke ${successCount} staff`);
+    // ==================== ✅ LOG BULK REMINDER ====================
+    try {
+      await logActivity('send_bulk_reminder_staff', 
+        `Mengirim pengingat WhatsApp ke ${successCount} staff (${failCount} gagal)`,
+        user
+      );
+    } catch (e) {
+      console.warn('⚠️ Logging failed:', e);
     }
   };
 
@@ -296,6 +323,13 @@ Segera lakukan absensi melalui sistem.
   const exportToExcel = () => {
     if (!canExport) {
       alert('Anda tidak memiliki akses untuk mengekspor data!');
+      
+      // ==================== ❌ LOG EXPORT DENIED ====================
+      logActivity('export_staff_attendance_excel_denied', 
+        `User ${user?.nama} (${role}) mencoba export Excel staff - DITOLAK`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
       return;
     }
     
@@ -332,12 +366,18 @@ Segera lakukan absensi melalui sistem.
       
       alert('✅ Data berhasil diekspor ke Excel!');
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('export_staff_attendance_excel', `Ekspor absensi staff ke Excel - ${filteredData.length} data`);
-      }
+      // ==================== ✅ LOG EXPORT EXCEL ====================
+      logExportStaffAttendanceExcel(user, filteredData.length)
+        .catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } catch (error) {
       console.error('Export Excel error:', error);
       alert('❌ Gagal mengekspor data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Export staff attendance Excel failed: ${error.message}`, 'StaffAttendanceTab/exportExcel')
+        .catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } finally {
       setExportLoading(false);
     }
@@ -354,6 +394,13 @@ Segera lakukan absensi melalui sistem.
   const exportToPDF = () => {
     if (!canExport) {
       alert('Anda tidak memiliki akses untuk mengekspor data!');
+      
+      // ==================== ❌ LOG EXPORT DENIED ====================
+      logActivity('export_staff_attendance_pdf_denied', 
+        `User ${user?.nama} (${role}) mencoba export PDF staff - DITOLAK`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
       return;
     }
     
@@ -525,12 +572,20 @@ Segera lakukan absensi melalui sistem.
       `);
       printWindow.document.close();
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('export_staff_attendance_pdf', `Ekspor absensi staff ke PDF - ${filteredData.length} data`);
-      }
+      // ==================== ✅ LOG EXPORT PDF ====================
+      logActivity('export_staff_attendance_pdf', 
+        `Ekspor absensi staff ke PDF - ${filteredData.length} data`,
+        user
+      ).catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } catch (error) {
       console.error('Export PDF error:', error);
       alert('❌ Gagal mengekspor data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Export staff attendance PDF failed: ${error.message}`, 'StaffAttendanceTab/exportPDF')
+        .catch(e => console.warn('⚠️ Logging failed:', e));
+      
     } finally {
       setExportLoading(false);
     }
@@ -540,6 +595,17 @@ Segera lakukan absensi melalui sistem.
   const deleteAllStaffAttendance = async () => {
     if (!isDeveloper) {
       alert('❌ Akses ditolak! Hanya role Developer yang dapat menghapus semua data.');
+      
+      // ==================== ❌ LOG DELETE ALL DENIED ====================
+      try {
+        await logActivity('delete_all_staff_attendance_denied', 
+          `User ${user?.nama} (${role}) mencoba hapus semua data staff - DITOLAK`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -567,6 +633,17 @@ Segera lakukan absensi melalui sistem.
     const userInput = prompt(confirmMessage);
     if (userInput !== 'HAPUS SEMUA') {
       alert('❌ Penghapusan dibatalkan.');
+      
+      // ==================== ❌ LOG DELETE ALL CANCELLED ====================
+      try {
+        await logActivity('delete_all_staff_attendance_cancelled', 
+          `Penghapusan semua data staff dibatalkan - ${filterDesc}`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+      
       return;
     }
 
@@ -596,13 +673,19 @@ Segera lakukan absensi melalui sistem.
 
       alert(`✅ Berhasil menghapus ${deletedCount} data absensi staff dari ${dateArray.length} tanggal!\n\n📌 Filter: ${filterDesc}`);
 
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_all_staff_attendance', `Menghapus semua absensi staff - ${deletedCount} data dari ${dateArray.length} tanggal (Filter: ${filterDesc})`);
-      }
+      // ==================== ✅ LOG DELETE ALL STAFF ATTENDANCE ====================
+      await logActivity('delete_all_staff_attendance', 
+        `Menghapus semua absensi staff - ${deletedCount} data dari ${dateArray.length} tanggal (Filter: ${filterDesc})`,
+        user
+      );
 
     } catch (error) {
       console.error('Delete all error:', error);
       alert('❌ Gagal menghapus semua data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete all staff attendance failed: ${error.message}`, 'StaffAttendanceTab/deleteAll');
+      
     } finally {
       setDeleteAllLoading(false);
     }
@@ -704,6 +787,9 @@ Segera lakukan absensi melalui sistem.
       console.error('Firebase staff attendance error:', error);
       setError('Gagal memuat data absensi staff dari server');
       setLoading(false);
+      
+      // ==================== ❌ LOG ERROR ====================
+      logError(user, `Failed to load staff attendance data: ${error.message}`, 'StaffAttendanceTab/load');
     });
 
     return () => {
@@ -1077,12 +1163,15 @@ Segera lakukan absensi melalui sistem.
       setAttendanceData(prev => prev.filter(item => item.id !== id));
       alert(`✅ Data absensi staff "${staffName}" berhasil dihapus dari database!`);
       
-      if (typeof window.logActivity === 'function') {
-        window.logActivity('delete_staff_attendance', `Menghapus absensi staff ${staffName} (ID: ${staffId}) pada tanggal ${date}`);
-      }
+      // ==================== ✅ LOG DELETE STAFF ATTENDANCE ====================
+      await logDeleteStaffAttendance(user, staffName, date);
+      
     } catch (error) {
       console.error('Delete error:', error);
       alert('❌ Gagal menghapus data: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Delete staff attendance for ${staffName} failed: ${error.message}`, 'StaffAttendanceTab/delete');
     }
   };
 
@@ -1153,6 +1242,10 @@ Segera lakukan absensi melalui sistem.
           alertMessage += `\n⚠️ WhatsApp gagal: ${whatsappResult.error}`;
         }
         alert(alertMessage);
+        
+        // ==================== ✅ LOG SIMULATE STAFF IN ====================
+        await logSimulateStaffAttendanceIn(user, selectedStaff.nama);
+        
       } else {
         const snapshot = await get(ref(db, `staff_attendance/${dateStr}/${selectedStaff.id}`));
         if (!snapshot.exists()) {
@@ -1181,12 +1274,20 @@ Segera lakukan absensi melalui sistem.
           alertMessage += `\n⚠️ WhatsApp gagal: ${whatsappResult.error}`;
         }
         alert(alertMessage);
+        
+        // ==================== ✅ LOG SIMULATE STAFF OUT ====================
+        await logSimulateStaffAttendanceOut(user, selectedStaff.nama);
       }
       
       closeSimulateModal();
+      
     } catch (error) {
       console.error('Simulate error:', error);
       alert('❌ Gagal melakukan simulasi: ' + error.message);
+      
+      // ==================== ❌ LOG ERROR ====================
+      await logError(user, `Simulate staff attendance ${simulateType === 'in' ? 'in' : 'out'} failed for ${selectedStaff?.nama}: ${error.message}`, 'StaffAttendanceTab/simulate');
+      
     } finally {
       setSimulateLoading(false);
     }
