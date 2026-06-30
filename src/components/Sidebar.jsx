@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, off, get } from 'firebase/database';
 import { db } from '../firebase/config';
+import MarqueeText from './MarqueeText'; // ⭐ IMPORT MARQUEE COMPONENT
 import './Sidebar.css';
 
 const Sidebar = ({
@@ -415,7 +416,12 @@ const Sidebar = ({
               <span className="sidebar-logo-icon">📱</span>
             )}
             <div className="sidebar-school-name-wrapper">
-              <h2 className="sidebar-school-name">{schoolName}</h2>
+              {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH DENGAN EFEK BERJALAN LOOPING ⭐ */}
+              <MarqueeText 
+                text={schoolName || 'Sistem Absensi'} 
+                speed={35}
+                className="sidebar-school-name-marquee"
+              />
               <div className="sidebar-school-name-underline"></div>
             </div>
           </div>
