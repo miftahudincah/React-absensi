@@ -282,7 +282,7 @@ const Sidebar = ({
     }
   }, [user?.uid]);
 
-  // ==================== MENU ITEMS ====================
+  // ==================== MENU ITEMS (URUTAN BARU) ====================
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -290,6 +290,84 @@ const Sidebar = ({
       description: 'Dashboard utama',
       icon: '📊'
     },
+    { 
+      id: 'attendance', 
+      label: 'Absensi Siswa',
+      description: 'Lihat absensi siswa',
+      icon: '📋'
+    },
+    { 
+      id: 'students', 
+      label: 'Data Siswa',
+      description: 'Kelola data siswa',
+      icon: '👨‍🎓'
+    },
+    { 
+      id: 'staff-attendance', 
+      label: 'Absensi Staff',
+      description: 'Lihat absensi staff',
+      icon: '👔',
+      requireStaff: true 
+    },
+    { 
+      id: 'staff', 
+      label: 'Data Staff',
+      description: 'Kelola data staff',
+      icon: '👥',
+      requireStaff: true 
+    },
+    { 
+      id: 'announcements', 
+      label: 'Pengumuman',
+      description: 'Lihat dan kelola pengumuman',
+      icon: '📢',
+      showForAll: true,
+      badge: unreadAnnouncements
+    },
+    { 
+      id: 'users', 
+      label: 'Manajemen User',
+      description: 'Kelola user',
+      icon: '🔐',
+      requireStaff: true 
+    },
+    { 
+      id: 'logs', 
+      label: 'Log Aktivitas',
+      description: 'Lihat riwayat aktivitas sistem',
+      icon: '📋',
+      requireLog: true
+    },
+    { 
+      id: 'ai', 
+      label: 'AI Assistant',
+      description: 'Asisten AI untuk membantu tugas sekolah',
+      icon: '🤖',
+      requireAI: true
+    },
+    { 
+      id: 'izin', 
+      label: 'Izin Online',
+      description: 'Ajukan dan kelola izin online',
+      icon: '📝',
+      requireIzin: true,
+      badge: izinPendingCount
+    },
+    { 
+      id: 'rekap', 
+      label: 'Rekap Siswa',
+      description: 'Rekapitulasi data siswa',
+      icon: '📊',
+      requireStaff: true
+    },
+    { 
+      id: 'config', 
+      label: 'Pengaturan',
+      description: 'Pengaturan sistem',
+      icon: '⚙️',
+      requireAdmin: true 
+    },
+    // Menu tambahan yang tetap ada (tidak dihapus)
     { 
       id: 'profile', 
       label: 'Profil',
@@ -320,83 +398,6 @@ const Sidebar = ({
       icon: '💬',
       showForAll: true,
       badge: unreadMessages
-    },
-    { 
-      id: 'announcements', 
-      label: 'Pengumuman',
-      description: 'Lihat dan kelola pengumuman',
-      icon: '📢',
-      showForAll: true,
-      badge: unreadAnnouncements
-    },
-    { 
-      id: 'ai', 
-      label: 'AI Assistant',
-      description: 'Asisten AI untuk membantu tugas sekolah',
-      icon: '🤖',
-      requireAI: true
-    },
-    { 
-      id: 'logs', 
-      label: 'Log Aktivitas',
-      description: 'Lihat riwayat aktivitas sistem',
-      icon: '📋',
-      requireLog: true
-    },
-    { 
-      id: 'attendance', 
-      label: 'Absensi Siswa',
-      description: 'Lihat absensi siswa',
-      icon: '📋'
-    },
-    { 
-      id: 'staff-attendance', 
-      label: 'Absensi Staff',
-      description: 'Lihat absensi staff',
-      icon: '👔',
-      requireStaff: true 
-    },
-    { 
-      id: 'students', 
-      label: 'Data Siswa',
-      description: 'Kelola data siswa',
-      icon: '👨‍🎓'
-    },
-    { 
-      id: 'staff', 
-      label: 'Data Staff',
-      description: 'Kelola data staff',
-      icon: '👥',
-      requireStaff: true 
-    },
-    { 
-      id: 'users', 
-      label: 'Manajemen User',
-      description: 'Kelola user',
-      icon: '🔐',
-      requireStaff: true 
-    },
-    { 
-      id: 'rekap', 
-      label: 'Rekap Siswa',
-      description: 'Rekapitulasi data siswa',
-      icon: '📊',
-      requireStaff: true
-    },
-    { 
-      id: 'izin', 
-      label: 'Izin Online',
-      description: 'Ajukan dan kelola izin online',
-      icon: '📝',
-      requireIzin: true,
-      badge: izinPendingCount
-    },
-    { 
-      id: 'config', 
-      label: 'Pengaturan',
-      description: 'Pengaturan sistem',
-      icon: '⚙️',
-      requireAdmin: true 
     }
   ];
 
@@ -496,7 +497,7 @@ const Sidebar = ({
               } else if (item.requireLog) {
                 shouldShow = hasLogAccess();
               } else if (isSiswa()) {
-                const studentMenus = ['dashboard', 'profile', 'status', 'friends', 'chat', 'announcements', 'attendance', 'students', 'rekap', 'izin'];
+                const studentMenus = ['dashboard', 'attendance', 'students', 'announcements', 'izin'];
                 shouldShow = studentMenus.includes(item.id);
               } else {
                 shouldShow = true;
