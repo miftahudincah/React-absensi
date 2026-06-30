@@ -151,6 +151,20 @@ const isSiswaRole = (role) => {
   return role === 'siswa';
 };
 
+// ==================== MAP IZIN TYPE TO ATTENDANCE STATUS ====================
+const mapIzinTypeToAttendanceStatus = (izinType) => {
+  // Mapping yang jelas: tipe izin -> status absensi
+  const statusMap = {
+    'sakit': 'Sakit',
+    'keperluan': 'Izin',
+    'izin': 'Izin',          // fallback
+    'dispensasi': 'Izin',    // fallback
+    'cuti': 'Izin'           // fallback
+  };
+  
+  return statusMap[izinType] || 'Izin'; // default ke 'Izin' jika tidak dikenal
+};
+
 // ==================== INSERT ATTENDANCE FROM IZIN ====================
 const insertAttendanceFromIzin = async (izin, user) => {
   try {
@@ -179,17 +193,14 @@ const insertAttendanceFromIzin = async (izin, user) => {
     
     console.log(`📅 Inserting attendance for ${dates.length} days:`, dates);
     
-    // Determine attendance status based on izin type
-    let attendanceStatus = 'Izin';
-    
-    if (izin.type === 'sakit') {
-      attendanceStatus = 'Sakit';
-    } else if (izin.type === 'keperluan') {
-      attendanceStatus = 'Izin';
-    }
+    // ========== ⭐ DETERMINE ATTENDANCE STATUS BASED ON IZIN TYPE ⭐ ==========
+    // Menggunakan fungsi mapping yang jelas
+    const attendanceStatus = mapIzinTypeToAttendanceStatus(izin.type);
+    console.log(`📊 Izin type: ${izin.type} → Attendance status: ${attendanceStatus}`);
     
     // Insert attendance for each date
     let insertedCount = 0;
+    let skippedCount = 0;
     
     for (const dateStr of dates) {
       const dateAttendanceRef = ref(db, `absensi/${dateStr}/${studentId}`);
@@ -198,6 +209,7 @@ const insertAttendanceFromIzin = async (izin, user) => {
       const snapshot = await get(dateAttendanceRef);
       if (snapshot.exists()) {
         console.log(`⚠️ Attendance already exists for ${studentName} on ${dateStr}, skipping...`);
+        skippedCount++;
         continue;
       }
       
@@ -212,7 +224,7 @@ const insertAttendanceFromIzin = async (izin, user) => {
         jurusan: jurusan,
         isLate: false,
         delayMinutes: 0,
-        status: attendanceStatus,
+        status: attendanceStatus, // ⭐ Menggunakan status yang sudah dipetakan
         timestamp: Date.now(),
         checkedInBy: 'Sistem (Izin)',
         isSimulate: false,
@@ -224,11 +236,11 @@ const insertAttendanceFromIzin = async (izin, user) => {
       
       await set(dateAttendanceRef, attendanceRecord);
       insertedCount++;
-      console.log(`✅ Inserted attendance for ${studentName} on ${dateStr}`);
+      console.log(`✅ Inserted attendance for ${studentName} on ${dateStr} with status: ${attendanceStatus}`);
     }
     
-    console.log(`✅ Successfully inserted ${insertedCount} attendance records for ${studentName}`);
-    return { success: true, insertedCount, dates };
+    console.log(`✅ Successfully inserted ${insertedCount} attendance records for ${studentName} (skipped ${skippedCount} existing)`);
+    return { success: true, insertedCount, skippedCount, dates, attendanceStatus };
     
   } catch (error) {
     console.error('❌ Failed to insert attendance from izin:', error);
@@ -563,7 +575,10 @@ const IzinTab = ({ user }) => {
       return;
     }
 
-    if (!window.confirm(`Setujui izin untuk ${studentName}?\n\n📅 ${izin.startDate} - ${izin.endDate}\n📋 ${izin.type === 'sakit' ? '🤒 Sakit' : '📝 Keperluan'}\n\n✅ Izin akan otomatis masuk ke absensi.`)) return;
+    // Tampilkan info status yang akan dimasukkan ke absensi
+    const attendanceStatus = mapIzinTypeToAttendanceStatus(izin.type);
+    
+    if (!window.confirm(`Setujui izin untuk ${studentName}?\n\n📅 ${izin.startDate} - ${izin.endDate}\n📋 ${izin.type === 'sakit' ? '🤒 Sakit' : '📝 Keperluan'}\n\n✅ Izin akan otomatis masuk ke absensi dengan status: "${attendanceStatus}"`)) return;
 
     try {
       // 1. Update status izin
@@ -580,7 +595,7 @@ const IzinTab = ({ user }) => {
       
       if (result.success) {
         showToast(
-          `✅ Izin ${studentName} disetujui! ${result.insertedCount} data absensi berhasil ditambahkan.`, 
+          `✅ Izin ${studentName} disetujui! ${result.insertedCount} data absensi berhasil ditambahkan dengan status "${result.attendanceStatus}".`, 
           'success'
         );
       } else {
@@ -890,6 +905,9 @@ const IzinTab = ({ user }) => {
         <span>
           <strong style={{ color: '#00bcd4' }}>Auto-Absensi:</strong> 
           {' '}Izin yang disetujui akan otomatis masuk ke data absensi siswa.
+          <span style={{ marginLeft: '8px', fontWeight: '500', color: '#4caf50' }}>
+            ({mapIzinTypeToAttendanceStatus('sakit')} untuk Sakit, {mapIzinTypeToAttendanceStatus('keperluan')} untuk Keperluan)
+          </span>
           {isFullAccessUser && ' (Semua role)'}
           {isStaffUser && ' (Hanya izin siswa)'}
           {isSiswaUser && ' (Pengajuan Anda)'}
@@ -994,6 +1012,9 @@ const IzinTab = ({ user }) => {
 
               // ⭐ Show auto-attendance badge for approved izin ⭐
               const showAutoBadge = isApproved && izin.status === 'approved';
+              
+              // ⭐ Show attendance status mapping ⭐
+              const attendanceStatus = mapIzinTypeToAttendanceStatus(izin.type);
 
               return (
                 <div 
@@ -1073,7 +1094,7 @@ const IzinTab = ({ user }) => {
                           ✅ Absensi otomatis terisi untuk {formatIndonesianDate(izin.startDate)} - {formatIndonesianDate(izin.endDate)}
                         </span>
                         <span style={{ fontSize: '10px', opacity: 0.7, marginLeft: 'auto' }}>
-                          Status: {izin.type === 'sakit' ? 'Sakit' : 'Izin'}
+                          Status: {attendanceStatus}
                         </span>
                       </div>
                     )}
@@ -1098,6 +1119,10 @@ const IzinTab = ({ user }) => {
                           ✅ Disetujui oleh: {izin.approvedBy}
                         </span>
                       )}
+                      {/* ⭐ Show mapping status ⭐ */}
+                      <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--text-muted)' }}>
+                        📊 Status Absensi: {attendanceStatus}
+                      </span>
                     </div>
                     {actionButtons}
                   </div>
@@ -1134,9 +1159,12 @@ const IzinTab = ({ user }) => {
                     onChange={handleFormChange}
                     required
                   >
-                    <option value="sakit">🤒 Sakit</option>
-                    <option value="keperluan">📝 Keperluan Keluarga</option>
+                    <option value="sakit">🤒 Sakit → Status Absensi: Sakit</option>
+                    <option value="keperluan">📝 Keperluan → Status Absensi: Izin</option>
                   </select>
+                  <small className="form-hint" style={{ color: '#4caf50' }}>
+                    ⚡ Izin Sakit akan tercatat sebagai "Sakit" di absensi, Keperluan sebagai "Izin"
+                  </small>
                 </div>
 
                 <div className="form-group">
@@ -1211,6 +1239,10 @@ const IzinTab = ({ user }) => {
                   <span style={{ marginLeft: '4px' }}>
                     Jika izin disetujui, data absensi akan otomatis terisi untuk seluruh tanggal yang diajukan.
                   </span>
+                  <div style={{ marginTop: '4px' }}>
+                    <span style={{ color: '#4caf50' }}>✅ Sakit → "Sakit"</span>
+                    <span style={{ marginLeft: '12px', color: '#ff9800' }}>📝 Keperluan → "Izin"</span>
+                  </div>
                   <span style={{ marginLeft: '8px', fontSize: '11px', color: '#ff9800' }}>
                     📌 Menghapus izin tidak akan menghapus data absensi.
                   </span>
@@ -1253,6 +1285,9 @@ const IzinTab = ({ user }) => {
             <span className="footer-pending"> • ⏳ {pendingCount} menunggu</span>
           )}
           <span className="footer-auto"> • 🤖 Auto-absensi aktif</span>
+          <span className="footer-mapping" style={{ color: '#4caf50', fontSize: '10px' }}>
+            • 🗺️ Sakit→Sakit, Keperluan→Izin
+          </span>
         </p>
       </div>
     </div>

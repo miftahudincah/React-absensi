@@ -1,5 +1,5 @@
 // src/pages/tabs/StaffAttendanceTab.jsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ref, onValue, set, remove, update, get } from 'firebase/database';
 import { db } from '../../firebase/config';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement, Filler } from 'chart.js';
@@ -14,6 +14,8 @@ import {
   logError,
   logSystem
 } from '../../utils/logger';
+// ⭐ IMPORT MARQUEE TEXT COMPONENT
+import MarqueeText from '../../components/MarqueeText';
 import './StaffAttendanceTab.css';
 
 // Register ChartJS components
@@ -24,6 +26,18 @@ ChartJS.register(
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
 
+// ==================== ⭐ MAP IZIN TYPE TO ATTENDANCE STATUS ====================
+const mapIzinTypeToAttendanceStatus = (izinType) => {
+  const statusMap = {
+    'sakit': 'Sakit',
+    'keperluan': 'Izin',
+    'izin': 'Izin',
+    'dispensasi': 'Izin',
+    'cuti': 'Izin'
+  };
+  return statusMap[izinType] || 'Izin';
+};
+
 const StaffAttendanceTab = ({ user }) => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [staffList, setStaffList] = useState([]);
@@ -33,6 +47,7 @@ const StaffAttendanceTab = ({ user }) => {
   const [filterDate, setFilterDate] = useState('all');
   const [filterJabatan, setFilterJabatan] = useState('all');
   const [filterDepartemen, setFilterDepartemen] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all'); // ⭐ NEW: Filter status absensi staff
   const [photoCache, setPhotoCache] = useState({});
   const [chartAnimated, setChartAnimated] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
@@ -44,9 +59,13 @@ const StaffAttendanceTab = ({ user }) => {
   const [simulateType, setSimulateType] = useState('in');
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [searchStaff, setSearchStaff] = useState('');
+  const [simulateStatus, setSimulateStatus] = useState('hadir'); // ⭐ NEW: Status untuk simulasi
   const [simulateLoading, setSimulateLoading] = useState(false);
   const [jabatanOptions, setJabatanOptions] = useState(['all']);
   const [departemenOptions, setDepartemenOptions] = useState(['all']);
+
+  // State untuk nama sekolah
+  const [schoolName, setSchoolName] = useState('Sistem Absensi');
 
   // Cek role
   const rawRole = user?.role || 'siswa';
@@ -58,6 +77,47 @@ const StaffAttendanceTab = ({ user }) => {
   const canView = isFullAccess || isStaff;
   const canExport = !isStaff;
   const isDeveloper = role === 'developer';
+
+  // ==================== AMBIL NAMA SEKOLAH ====================
+  useEffect(() => {
+    if (!db) return;
+
+    let isMounted = true;
+
+    const schoolNameRef = ref(db, 'system_config/schoolName');
+    const unsubscribeName = onValue(schoolNameRef, (snapshot) => {
+      if (!isMounted) return;
+      const name = snapshot.val();
+      if (name && name !== 'null' && name !== 'undefined' && name.trim() !== '') {
+        setSchoolName(name);
+      } else {
+        const schoolInfoRef = ref(db, 'school_info');
+        onValue(schoolInfoRef, (infoSnapshot) => {
+          if (!isMounted) return;
+          const infoData = infoSnapshot.val();
+          if (infoData && infoData.name && infoData.name.trim() !== '') {
+            setSchoolName(infoData.name);
+          } else {
+            const configRef = ref(db, 'school_config');
+            onValue(configRef, (configSnapshot) => {
+              if (!isMounted) return;
+              const configData = configSnapshot.val();
+              if (configData && configData.schoolName && configData.schoolName.trim() !== '') {
+                setSchoolName(configData.schoolName);
+              } else {
+                setSchoolName('Sistem Absensi');
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeName();
+    };
+  }, []);
 
   // ==================== GET STAFF PHOTO ====================
   const getStaffPhoto = (staffId, staffName) => {
@@ -154,7 +214,7 @@ const StaffAttendanceTab = ({ user }) => {
       return { success: false, error: 'No phone number' };
     }
 
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const dateStr = new Date().toLocaleDateString('id-ID', { 
       weekday: 'long', 
       year: 'numeric', 
@@ -162,7 +222,7 @@ const StaffAttendanceTab = ({ user }) => {
       day: 'numeric' 
     });
     
-    const message = `*📋 NOTIFIKASI ABSENSI STAFF - ${schoolName}*
+    const message = `*📋 NOTIFIKASI ABSENSI STAFF - ${schoolNameText}*
 
 👤 *Staff:* ${staff.nama}
 🆔 *ID:* ${staff.id}
@@ -186,7 +246,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
       return { success: false, error: 'No phone number' };
     }
 
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const dateStr = new Date().toLocaleDateString('id-ID', { 
       weekday: 'long', 
       year: 'numeric', 
@@ -194,23 +254,61 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
       day: 'numeric' 
     });
     
-    const message = `*🏠 NOTIFIKASI ABSENSI PULANG STAFF - ${schoolName}*
+    const message = `*🏠 NOTIFIKASI ABSENSI PULANG STAFF - ${schoolNameText}*
 
 👤 *Staff:* ${staff.nama}
 🆔 *ID:* ${staff.id}
 📋 *Jabatan:* ${staff.jabatan || '-'}
 🏢 *Departemen:* ${staff.departemen || '-'}
 📅 *Tanggal:* ${dateStr}
-🕐 *Jam Masuk:* ${timeIn} WIB
+🕐 *Jam Masuk:* ${timeIn || '-'} WIB
 🏠 *Jam Pulang:* ${timeOut} WIB
 
-✅ *Staff sudah pulang.*
+✅ *Staff sudah pulang dengan selamat.*
 
 --- 
 📱 *Sistem Absensi IoT*
 🔔 Notifikasi ini dikirim secara otomatis.`;
 
     return await sendWhatsAppNotification(phoneNumber, message, 'staff_check_out');
+  };
+
+  // ==================== ⭐ SEND STAFF IZIN NOTIFICATION ====================
+  const sendStaffIzinNotification = async (staff, izinData) => {
+    const phoneNumber = getStaffPhoneNumber(staff);
+    if (!phoneNumber) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    const schoolNameText = schoolName || 'Sekolah';
+    const dateStr = new Date().toLocaleDateString('id-ID', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    const statusText = mapIzinTypeToAttendanceStatus(izinData.type);
+    const typeText = izinData.type === 'sakit' ? '🤒 Sakit' : '📝 Keperluan';
+
+    const message = `*📋 NOTIFIKASI IZIN STAFF - ${schoolNameText}*
+
+👤 *Staff:* ${staff.nama}
+🆔 *ID:* ${staff.id}
+📋 *Jabatan:* ${staff.jabatan || '-'}
+🏢 *Departemen:* ${staff.departemen || '-'}
+📅 *Tanggal:* ${dateStr}
+📋 *Jenis:* ${typeText}
+🕐 *Tanggal Izin:* ${izinData.startDate} - ${izinData.endDate}
+✅ *Status Absensi:* ${statusText}
+
+📝 *Alasan:* ${izinData.reason || '-'}
+
+--- 
+📱 *Sistem Absensi IoT*
+🔔 Notifikasi ini dikirim secara otomatis untuk izin yang disetujui.`;
+
+    return await sendWhatsAppNotification(phoneNumber, message, 'staff_izin');
   };
 
   // ==================== SEND STAFF REMINDER NOTIFICATION ====================
@@ -220,7 +318,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
       return { success: false, error: 'No phone number' };
     }
 
-    const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sekolah';
+    const schoolNameText = schoolName || 'Sekolah';
     const dateStr = new Date().toLocaleDateString('id-ID', { 
       weekday: 'long', 
       year: 'numeric', 
@@ -229,7 +327,7 @@ ${isLate ? '⚠️ *Status: TERLAMBAT*' : '✅ *Status: TEPAT WAKTU*'}
     });
     const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     
-    const message = `*🔔 PENGINGAT ABSENSI STAFF - ${schoolName}*
+    const message = `*🔔 PENGINGAT ABSENSI STAFF - ${schoolNameText}*
 
 👤 *Staff:* ${staff.nama}
 🆔 *ID:* ${staff.id}
@@ -270,7 +368,7 @@ Segera lakukan absensi melalui sistem.
     
     const checkedInIds = new Set();
     attendanceData
-      .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang'))
+      .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang' || a.status === 'Sakit' || a.status === 'Izin'))
       .forEach(a => checkedInIds.add(a.staffId));
 
     const absentStaff = filteredStaff.filter(s => !checkedInIds.has(s.id));
@@ -336,25 +434,26 @@ Segera lakukan absensi melalui sistem.
     setExportLoading(true);
     
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
       const periodText = getPeriodText();
       
       let csv = '\uFEFF';
       csv += `"LAPORAN ABSENSI STAFF"\n`;
-      csv += `"${schoolName}"\n`;
+      csv += `"${schoolNameText}"\n`;
       csv += `"Periode: ${periodText}"\n`;
       csv += `"Filter Jabatan: ${filterJabatan === 'all' ? 'Semua' : filterJabatan}"\n`;
       csv += `"Filter Departemen: ${filterDepartemen === 'all' ? 'Semua' : filterDepartemen}"\n`;
+      csv += `"Filter Status: ${filterStatus === 'all' ? 'Semua' : filterStatus}"\n`;
       csv += `"Tanggal Cetak: ${dateNow} ${timeNow}"\n\n`;
-      csv += `"No","Tanggal","Waktu Masuk","Waktu Pulang","ID","Nama","Jabatan","Departemen","Status","No HP"\n`;
+      csv += `"No","Tanggal","Waktu Masuk","Waktu Pulang","ID","Nama","Jabatan","Departemen","Status","No HP","Dari Izin","Diapprove Oleh"\n`;
       
       filteredData.forEach((item, index) => {
         const staff = staffList.find(s => s.id == item.staffId);
         const noHp = getStaffPhoneNumber(staff) || item.noHp || '-';
-        const status = item.status === 'Pulang' ? 'Pulang' : (item.timeIn > '07:30' ? 'Terlambat' : 'Hadir');
-        csv += `"${index + 1}","${item.date}","${item.timeIn || '-'}","${item.timeOut || '-'}","${item.staffId}","${item.nama}","${item.jabatan || '-'}","${item.departemen || '-'}","${status}","${noHp}"\n`;
+        const status = item.status || 'Tidak Hadir';
+        csv += `"${index + 1}","${item.date}","${item.timeIn || '-'}","${item.timeOut || '-'}","${item.staffId}","${item.nama}","${item.jabatan || '-'}","${item.departemen || '-'}","${status}","${noHp}","${item.isFromIzin ? 'Ya' : 'Tidak'}","${item.approvedBy || '-'}"\n`;
       });
       
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -407,7 +506,7 @@ Segera lakukan absensi melalui sistem.
     setExportLoading(true);
     
     try {
-      const schoolName = document.getElementById('schoolNameDisplay')?.innerText || 'Sistem Absensi';
+      const schoolNameText = schoolName || 'Sistem Absensi';
       const dateNow = new Date().toLocaleDateString('id-ID');
       const timeNow = new Date().toLocaleTimeString('id-ID');
       const periodText = getPeriodText();
@@ -416,24 +515,44 @@ Segera lakukan absensi melalui sistem.
       const totalStaff = filteredStaff.length;
       const hadirSet = new Set();
       const pulangSet = new Set();
+      const sakitSet = new Set();
+      const izinSet = new Set();
+      
       filteredData.forEach(item => {
-        if (item.status === 'Hadir' || item.status === 'Pulang') {
+        const status = item.status || '';
+        if (status === 'Hadir' || status === 'Pulang') {
           hadirSet.add(item.staffId);
         }
-        if (item.status === 'Pulang') {
+        if (status === 'Pulang') {
           pulangSet.add(item.staffId);
         }
+        if (status === 'Sakit') {
+          sakitSet.add(item.staffId);
+        }
+        if (status === 'Izin') {
+          izinSet.add(item.staffId);
+        }
       });
-      const hadir = hadirSet.size;
+      
+      const allHadir = new Set([...hadirSet, ...sakitSet, ...izinSet]);
+      const hadir = allHadir.size;
       const pulang = pulangSet.size;
+      const sakit = sakitSet.size;
+      const izin = izinSet.size;
       const persentase = totalStaff > 0 ? Math.round((hadir / totalStaff) * 100) : 0;
       
       const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('❌ Gagal membuka window print. Mohon izinkan popup.');
+        setExportLoading(false);
+        return;
+      }
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Laporan Absensi Staff - ${schoolName}</title>
+          <title>Laporan Absensi Staff - ${schoolNameText}</title>
           <meta charset="UTF-8">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -455,7 +574,11 @@ Segera lakukan absensi melalui sistem.
             .status-hadir { color: #4caf50; font-weight: 600; }
             .status-pulang { color: #ff9800; font-weight: 600; }
             .status-terlambat { color: #f44336; font-weight: 600; }
+            .status-sakit { color: #ff9800; font-weight: 600; }
+            .status-izin { color: #00bcd4; font-weight: 600; }
+            .status-alpha { color: #f44336; font-weight: 600; }
             .wa-column { color: #25d366; }
+            .izin-column { color: #00bcd4; }
             .footer { text-align: center; margin-top: 20px; padding-top: 10px; font-size: 10px; color: #888; border-top: 1px solid #ddd; }
             .footer .signature { margin-top: 20px; display: flex; justify-content: flex-end; gap: 60px; }
             .footer .signature div { text-align: center; font-size: 12px; }
@@ -466,12 +589,13 @@ Segera lakukan absensi melalui sistem.
         <body>
           <div class="header">
             <h1>👔 LAPORAN ABSENSI STAFF</h1>
-            <p>${schoolName}</p>
+            <p>${schoolNameText}</p>
           </div>
           <div class="info">
             <span><span class="label">📅 Periode:</span> <span class="value">${periodText}</span></span>
             <span><span class="label">📋 Jabatan:</span> <span class="value">${filterJabatan === 'all' ? 'Semua' : filterJabatan}</span></span>
             <span><span class="label">🏢 Departemen:</span> <span class="value">${filterDepartemen === 'all' ? 'Semua' : filterDepartemen}</span></span>
+            <span><span class="label">📊 Status:</span> <span class="value">${filterStatus === 'all' ? 'Semua' : filterStatus}</span></span>
             <span><span class="label">👥 Total Data:</span> <span class="value">${filteredData.length}</span></span>
             <span><span class="label">👤 Dicetak oleh:</span> <span class="value">${roleName}</span></span>
             <span><span class="label">📅 Tanggal Cetak:</span> <span class="value">${dateNow} ${timeNow}</span></span>
@@ -488,6 +612,14 @@ Segera lakukan absensi melalui sistem.
             <div class="stat-box">
               <div class="num">${pulang}</div>
               <div class="lbl">🏠 Pulang</div>
+            </div>
+            <div class="stat-box">
+              <div class="num">${sakit}</div>
+              <div class="lbl">🤒 Sakit</div>
+            </div>
+            <div class="stat-box">
+              <div class="num">${izin}</div>
+              <div class="lbl">📝 Izin</div>
             </div>
             <div class="stat-box">
               <div class="num">${persentase}%</div>
@@ -507,6 +639,7 @@ Segera lakukan absensi melalui sistem.
                 <th>Departemen</th>
                 <th>Status</th>
                 <th class="wa-column">📱 No HP</th>
+                <th class="izin-column">📝 Izin</th>
               </tr>
             </thead>
             <tbody>
@@ -515,16 +648,14 @@ Segera lakukan absensi melalui sistem.
       filteredData.forEach((item, index) => {
         const staff = staffList.find(s => s.id == item.staffId);
         const noHp = getStaffPhoneNumber(staff) || item.noHp || '-';
-        const isLate = item.timeIn && item.timeIn > '07:30' && item.status === 'Hadir';
+        const status = item.status || 'Tidak Hadir';
+        
         let statusClass = 'status-hadir';
-        let statusText = 'Hadir';
-        if (item.status === 'Pulang') {
-          statusClass = 'status-pulang';
-          statusText = 'Pulang';
-        } else if (isLate) {
-          statusClass = 'status-terlambat';
-          statusText = 'Terlambat';
-        }
+        if (status === 'Pulang') statusClass = 'status-pulang';
+        else if (status === 'Sakit') statusClass = 'status-sakit';
+        else if (status === 'Izin') statusClass = 'status-izin';
+        else if (status === 'Alpha' || status === 'Tidak Hadir') statusClass = 'status-alpha';
+        else if (status === 'Hadir (Terlambat)') statusClass = 'status-terlambat';
         
         printWindow.document.write(`
           <tr>
@@ -536,8 +667,9 @@ Segera lakukan absensi melalui sistem.
             <td>${item.nama}</td>
             <td>${item.jabatan || '-'}</td>
             <td>${item.departemen || '-'}</td>
-            <td class="${statusClass}">${statusText}</td>
+            <td class="${statusClass}">${status}</td>
             <td class="wa-column">${noHp}</td>
+            <td class="izin-column">${item.isFromIzin ? '✅' : '-'}</td>
           </tr>
         `);
       });
@@ -624,6 +756,8 @@ Segera lakukan absensi melalui sistem.
       filterDesc = `Departemen ${filterDepartemen}`;
     } else if (filterDate !== 'all') {
       filterDesc = `Tanggal ${filterDate}`;
+    } else if (filterStatus !== 'all') {
+      filterDesc = `Status ${filterStatus}`;
     } else {
       filterDesc = 'SEMUA DATA';
     }
@@ -760,6 +894,24 @@ Segera lakukan absensi melalui sistem.
                 // ⭐ EXCLUDE DEVELOPER ATTENDANCE ⭐
                 if (record.jabatan && record.jabatan === 'developer') return;
                 
+                // ⭐ Tentukan status yang benar, termasuk dari izin ⭐
+                let status = record.status || 'Tidak Hadir';
+                
+                // Jika record berasal dari izin, gunakan status yang sudah ditentukan
+                if (record.isFromIzin && record.izinType) {
+                  if (record.status) {
+                    status = record.status;
+                  } else {
+                    status = mapIzinTypeToAttendanceStatus(record.izinType);
+                  }
+                } else if (record.timeOut) {
+                  status = 'Pulang';
+                } else if (record.timeIn) {
+                  status = 'Hadir';
+                } else if (record.status) {
+                  status = record.status;
+                }
+                
                 attendanceList.push({
                   id: date + "-" + id,
                   staffId: id,
@@ -769,9 +921,14 @@ Segera lakukan absensi melalui sistem.
                   nama: record.nama,
                   jabatan: record.jabatan,
                   departemen: record.departemen || '-',
-                  status: record.timeOut ? "Pulang" : "Hadir",
+                  status: status,
                   timestamp: record.timestamp || Date.now(),
-                  noHp: record.noHp || null
+                  noHp: record.noHp || null,
+                  isFromIzin: record.isFromIzin || false, // ⭐ Tanda dari izin
+                  izinId: record.izinId || null,
+                  izinType: record.izinType || null,
+                  approvedBy: record.approvedBy || null,
+                  checkedInBy: record.checkedInBy || 'Sistem'
                 });
               }
             });
@@ -837,8 +994,30 @@ Segera lakukan absensi melalui sistem.
       data = data.filter(a => a.departemen === filterDepartemen);
     }
     
+    // ⭐ FILTER STATUS
+    if (filterStatus !== 'all') {
+      data = data.filter(a => {
+        if (filterStatus === 'hadir') {
+          return a.status === 'Hadir' || a.status === 'Hadir (Terlambat)';
+        }
+        if (filterStatus === 'sakit') {
+          return a.status === 'Sakit';
+        }
+        if (filterStatus === 'izin') {
+          return a.status === 'Izin';
+        }
+        if (filterStatus === 'alpha') {
+          return a.status === 'Alpha' || a.status === 'Tidak Hadir';
+        }
+        if (filterStatus === 'pulang') {
+          return a.status === 'Pulang';
+        }
+        return a.status === filterStatus;
+      });
+    }
+    
     return data;
-  }, [attendanceData, filterDate, filterJabatan, filterDepartemen]);
+  }, [attendanceData, filterDate, filterJabatan, filterDepartemen, filterStatus]);
 
   const filteredStaff = useMemo(() => {
     let result = [...staffList];
@@ -858,30 +1037,48 @@ Segera lakukan absensi melalui sistem.
     const totalStaff = filteredStaff.length;
     const hadirSet = new Set();
     const pulangSet = new Set();
+    const sakitSet = new Set();
+    const izinSet = new Set();
+    const alphaSet = new Set();
     
     filteredData.forEach(item => {
-      if (item.status === 'Hadir' || item.status === 'Pulang') {
+      const status = item.status || '';
+      if (status === 'Hadir' || status === 'Pulang' || status === 'Hadir (Terlambat)') {
         hadirSet.add(item.staffId);
       }
-      if (item.status === 'Pulang') {
+      if (status === 'Pulang') {
         pulangSet.add(item.staffId);
+      }
+      if (status === 'Sakit') {
+        sakitSet.add(item.staffId);
+      }
+      if (status === 'Izin') {
+        izinSet.add(item.staffId);
+      }
+      if (status === 'Alpha' || status === 'Tidak Hadir') {
+        alphaSet.add(item.staffId);
       }
     });
     
-    const hadir = hadirSet.size;
+    // Gabungkan semua yang hadir (termasuk sakit dan izin) untuk kehadiran
+    const allHadir = new Set([...hadirSet, ...sakitSet, ...izinSet]);
+    const hadir = allHadir.size;
     const pulang = pulangSet.size;
+    const sakit = sakitSet.size;
+    const izin = izinSet.size;
+    const alpha = alphaSet.size;
     const totalTransaksi = filteredData.length;
     const persentase = totalStaff > 0 ? Math.round((hadir / totalStaff) * 100) : 0;
     
-    return { hadir, pulang, totalTransaksi, totalStaff, persentase };
+    return { hadir, pulang, sakit, izin, alpha, totalTransaksi, totalStaff, persentase };
   }, [filteredData, filteredStaff]);
 
   // ==================== CHART DATA ====================
   const donutData = {
-    labels: ['Hadir', 'Tidak Hadir'],
+    labels: ['Hadir', 'Sakit', 'Izin', 'Tidak Hadir'],
     datasets: [{
-      data: [stats.hadir, stats.totalStaff - stats.hadir],
-      backgroundColor: ['#ff9800', '#f44336'],
+      data: [stats.hadir, stats.sakit, stats.izin, stats.totalStaff - stats.hadir - stats.sakit - stats.izin],
+      backgroundColor: ['#4caf50', '#ff9800', '#00bcd4', '#f44336'],
       borderWidth: 0,
       hoverOffset: 10
     }]
@@ -932,7 +1129,7 @@ Segera lakukan absensi melalui sistem.
     
     const hadirSet = new Set();
     filteredData.forEach(item => {
-      if (item.status === 'Hadir' || item.status === 'Pulang') {
+      if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Sakit' || item.status === 'Izin') {
         hadirSet.add(item.staffId);
       }
     });
@@ -960,8 +1157,8 @@ Segera lakukan absensi melalui sistem.
       {
         label: 'Hadir',
         data: jabatanChartData.hadirData,
-        backgroundColor: 'rgba(255, 152, 0, 0.7)',
-        borderColor: '#ff9800',
+        backgroundColor: 'rgba(76, 175, 80, 0.7)',
+        borderColor: '#4caf50',
         borderWidth: 1,
         borderRadius: 6,
         barPercentage: 0.6,
@@ -1037,7 +1234,7 @@ Segera lakukan absensi melalui sistem.
       const dayAttendance = filteredData.filter(a => a.date === dateStr);
       const hadirSet = new Set();
       dayAttendance.forEach(item => {
-        if (item.status === 'Hadir' || item.status === 'Pulang') {
+        if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Sakit' || item.status === 'Izin') {
           hadirSet.add(item.staffId);
         }
       });
@@ -1059,11 +1256,11 @@ Segera lakukan absensi melalui sistem.
       {
         label: 'Jumlah Hadir',
         data: lineData.attendanceCount,
-        borderColor: '#ff9800',
-        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        borderColor: '#00bcd4',
+        backgroundColor: 'rgba(0, 188, 212, 0.1)',
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: '#ff9800',
+        pointBackgroundColor: '#00bcd4',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: 4,
@@ -1072,12 +1269,12 @@ Segera lakukan absensi melalui sistem.
       {
         label: 'Persentase Kehadiran (%)',
         data: lineData.percentageData,
-        borderColor: '#2196f3',
-        backgroundColor: 'rgba(33, 150, 243, 0.05)',
+        borderColor: '#ff9800',
+        backgroundColor: 'rgba(255, 152, 0, 0.05)',
         fill: true,
         tension: 0.4,
         borderDash: [5, 5],
-        pointBackgroundColor: '#2196f3',
+        pointBackgroundColor: '#ff9800',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: 4,
@@ -1156,7 +1353,7 @@ Segera lakukan absensi melalui sistem.
     const date = attendanceToDelete.date;
     const staffId = attendanceToDelete.staffId;
     
-    if (!window.confirm(`⚠️ Yakin ingin menghapus data absensi staff "${staffName}"?\n\nTanggal: ${date}\nID: ${staffId}\n\nData akan dihapus PERMANEN dari database!`)) return;
+    if (!window.confirm(`⚠️ Yakin ingin menghapus data absensi staff "${staffName}"?\n\nTanggal: ${date}\nID: ${staffId}\nStatus: ${attendanceToDelete.status}\n\nData akan dihapus PERMANEN dari database!`)) return;
     
     try {
       await remove(ref(db, `staff_attendance/${date}/${staffId}`));
@@ -1184,6 +1381,7 @@ Segera lakukan absensi melalui sistem.
     setSimulateType(type);
     setSelectedStaff(null);
     setSearchStaff('');
+    setSimulateStatus('hadir');
     setShowSimulateModal(true);
   };
 
@@ -1191,6 +1389,7 @@ Segera lakukan absensi melalui sistem.
     setShowSimulateModal(false);
     setSelectedStaff(null);
     setSearchStaff('');
+    setSimulateStatus('hadir');
   };
 
   const handleSimulateAttendance = async () => {
@@ -1214,8 +1413,20 @@ Segera lakukan absensi melalui sistem.
           return;
         }
 
-        const isLate = timeStr > '07:30';
-        const attendanceData = {
+        // ⭐ Gunakan status dari pilihan
+        let attendanceStatus = simulateStatus;
+        if (simulateStatus === 'hadir') {
+          attendanceStatus = 'Hadir';
+        } else if (simulateStatus === 'sakit') {
+          attendanceStatus = 'Sakit';
+        } else if (simulateStatus === 'izin') {
+          attendanceStatus = 'Izin';
+        } else if (simulateStatus === 'alpha') {
+          attendanceStatus = 'Alpha';
+        }
+
+        const isLate = timeStr > '07:30' && simulateStatus === 'hadir';
+        const attendanceRecord = {
           staffId: selectedStaff.id,
           nama: selectedStaff.nama,
           jabatan: selectedStaff.jabatan || 'guru',
@@ -1223,22 +1434,30 @@ Segera lakukan absensi melalui sistem.
           timeIn: timeStr,
           timeOut: null,
           timestamp: Date.now(),
-          status: 'Hadir',
-          noHp: selectedStaff.noHp || null
+          status: attendanceStatus,
+          noHp: selectedStaff.noHp || null,
+          isFromIzin: false,
+          checkedInBy: user?.nama || 'Sistem (Simulasi)'
         };
         
-        await set(ref(db, `staff_attendance/${dateStr}/${selectedStaff.id}`), attendanceData);
+        await set(ref(db, `staff_attendance/${dateStr}/${selectedStaff.id}`), attendanceRecord);
         
         const staffData = staffList.find(s => s.id == selectedStaff.id);
         let whatsappResult = null;
-        if (staffData) {
+        if (staffData && simulateStatus === 'hadir') {
           whatsappResult = await sendStaffCheckInNotification(staffData, timeStr, isLate);
         }
         
-        let alertMessage = `✅ Absen masuk berhasil untuk staff ${selectedStaff.nama} (${timeStr})${isLate ? ' ⚠️ Terlambat!' : ''}`;
-        if (whatsappResult?.success) {
+        let alertMessage = `✅ Absen masuk berhasil untuk staff ${selectedStaff.nama} (${timeStr})`;
+        if (simulateStatus !== 'hadir') {
+          alertMessage += `\n📊 Status: ${attendanceStatus}`;
+        }
+        if (isLate) {
+          alertMessage += ' ⚠️ Terlambat!';
+        }
+        if (whatsappResult?.success && simulateStatus === 'hadir') {
           alertMessage += '\n📱 WhatsApp terkirim!';
-        } else if (whatsappResult?.error) {
+        } else if (whatsappResult?.error && simulateStatus === 'hadir') {
           alertMessage += `\n⚠️ WhatsApp gagal: ${whatsappResult.error}`;
         }
         alert(alertMessage);
@@ -1255,6 +1474,13 @@ Segera lakukan absensi melalui sistem.
         }
         
         const existingData = snapshot.val();
+        
+        // Cek apakah staff sudah izin (Sakit/Izin)
+        if (existingData.status === 'Sakit' || existingData.status === 'Izin') {
+          alert(`⚠️ Staff ${selectedStaff.nama} sedang ${existingData.status} dan tidak perlu absen pulang.`);
+          setSimulateLoading(false);
+          return;
+        }
         
         await update(ref(db, `staff_attendance/${dateStr}/${selectedStaff.id}`), {
           timeOut: timeStr,
@@ -1311,6 +1537,16 @@ Segera lakukan absensi melalui sistem.
     dateOptions.push({ value: dateStr, label });
   }
 
+  // ⭐ STATUS FILTER OPTIONS
+  const statusOptions = [
+    { value: 'all', label: '📊 Semua Status' },
+    { value: 'hadir', label: '✅ Hadir' },
+    { value: 'sakit', label: '🤒 Sakit' },
+    { value: 'izin', label: '📝 Izin' },
+    { value: 'alpha', label: '❌ Alpha' },
+    { value: 'pulang', label: '🏠 Pulang' }
+  ];
+
   let filterButtonLabel = 'Semua Data';
   if (filterJabatan !== 'all' && filterDepartemen !== 'all') {
     filterButtonLabel = `Jabatan ${filterJabatan} & Departemen ${filterDepartemen}`;
@@ -1320,13 +1556,15 @@ Segera lakukan absensi melalui sistem.
     filterButtonLabel = `Departemen ${filterDepartemen}`;
   } else if (filterDate !== 'all') {
     filterButtonLabel = `Tanggal ${filterDate}`;
+  } else if (filterStatus !== 'all') {
+    filterButtonLabel = `Status ${filterStatus}`;
   }
 
   const totalDataToDelete = filteredData.length;
 
   const todayCheckedIn = new Set();
   attendanceData
-    .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang'))
+    .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang' || a.status === 'Sakit' || a.status === 'Izin'))
     .forEach(a => todayCheckedIn.add(a.staffId));
   const absentToday = filteredStaff.filter(s => !todayCheckedIn.has(s.id));
 
@@ -1376,9 +1614,18 @@ Segera lakukan absensi melalui sistem.
 
   return (
     <div className="staff-attendance-container">
-      {/* ==================== HEADER - STICKY ==================== */}
+      {/* ==================== HEADER ==================== */}
       <header className="attendance-header-mobile" id="staff-header">
         <div className="header-left">
+          {/* ⭐ MENGGUNAKAN MARQUEE TEXT UNTUK NAMA SEKOLAH ⭐ */}
+          <div className="attendance-school-name-wrapper">
+            <MarqueeText 
+              text={schoolName || 'Sistem Absensi'} 
+              speed={30}
+              className="attendance-school-name-marquee"
+            />
+            <div className="attendance-school-name-underline"></div>
+          </div>
           <h1>👔 Absensi Staff</h1>
           <p className="header-subtitle">
             Pantau kehadiran guru & karyawan
@@ -1408,18 +1655,44 @@ Segera lakukan absensi melalui sistem.
             </div>
           )}
 
-          {/* SIMULATE BUTTONS - DENGAN WRAPPER */}
+          {/* SIMULATE BUTTONS */}
           {canSimulate && (
             <div className="simulate-buttons-mobile">
               <button 
                 className="btn-simulate-in-mobile" 
                 onClick={() => openSimulateModal('in')}
+                style={{
+                  padding: '6px 12px',
+                  background: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
               >
                 ✅ Masuk
               </button>
               <button 
                 className="btn-simulate-out-mobile" 
                 onClick={() => openSimulateModal('out')}
+                style={{
+                  padding: '6px 12px',
+                  background: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
               >
                 🏠 Pulang
               </button>
@@ -1466,6 +1739,44 @@ Segera lakukan absensi melalui sistem.
         </div>
       )}
 
+      {/* ==================== ⭐ INFO BANNER - INTEGRASI IZIN STAFF ==================== */}
+      <div className="izin-integration-banner-staff" style={{
+        background: 'linear-gradient(135deg, rgba(0,188,212,0.10), rgba(0,188,212,0.04))',
+        borderRadius: '12px',
+        padding: '10px 16px',
+        marginBottom: '12px',
+        border: '1px solid rgba(0,188,212,0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        flexWrap: 'wrap',
+        fontSize: '12px'
+      }}>
+        <span style={{ fontSize: '18px' }}>📝</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          <strong style={{ color: '#00bcd4' }}>Izin Staff Terintegrasi:</strong>
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          Staff yang izin akan tercatat otomatis sebagai
+        </span>
+        <span style={{ color: '#ff9800', fontWeight: 'bold' }}>🤒 Sakit</span>
+        <span style={{ color: 'var(--text-muted)' }}>atau</span>
+        <span style={{ color: '#00bcd4', fontWeight: 'bold' }}>📝 Izin</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          sesuai jenis izin yang disetujui.
+        </span>
+        {filteredData.some(d => d.isFromIzin) && (
+          <span style={{ 
+            marginLeft: 'auto', 
+            color: '#4caf50',
+            fontWeight: 'bold',
+            fontSize: '11px'
+          }}>
+            ✅ {filteredData.filter(d => d.isFromIzin).length} data dari izin
+          </span>
+        )}
+      </div>
+
       {/* ==================== REMINDER BUTTON ==================== */}
       {(canSimulate) && (
         <div className="reminder-banner-staff" style={{
@@ -1508,7 +1819,7 @@ Segera lakukan absensi melalui sistem.
         </div>
       )}
 
-      {/* ==================== BANNER DEVELOPER (TETAP TAMPIL UNTUK DEVELOPER) ==================== */}
+      {/* ==================== BANNER DEVELOPER ==================== */}
       {isDeveloper && (
         <div className="developer-banner-staff" style={{
           background: 'linear-gradient(135deg, rgba(244,67,54,0.12), rgba(244,67,54,0.04))',
@@ -1575,7 +1886,7 @@ Segera lakukan absensi melalui sistem.
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 'bold',
-              cursor: 'pointer',
+              cursor: deleteAllLoading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
@@ -1599,6 +1910,18 @@ Segera lakukan absensi melalui sistem.
         <div className="stat-card-mobile stat-pulang-mobile">
           <span className="stat-number-mobile">{stats.pulang}</span>
           <span className="stat-label-mobile">🏠 Pulang</span>
+        </div>
+        <div className="stat-card-mobile stat-sakit-mobile">
+          <span className="stat-number-mobile">{stats.sakit}</span>
+          <span className="stat-label-mobile">🤒 Sakit</span>
+        </div>
+        <div className="stat-card-mobile stat-izin-mobile">
+          <span className="stat-number-mobile">{stats.izin}</span>
+          <span className="stat-label-mobile">📝 Izin</span>
+        </div>
+        <div className="stat-card-mobile stat-alpha-mobile">
+          <span className="stat-number-mobile">{stats.alpha}</span>
+          <span className="stat-label-mobile">❌ Alpha</span>
         </div>
         <div className="stat-card-mobile stat-persen-mobile">
           <span className="stat-number-mobile">{stats.persentase}%</span>
@@ -1627,6 +1950,8 @@ Segera lakukan absensi melalui sistem.
           <div className="chart-info-mobile">
             <span>Total Staff: {stats.totalStaff}</span>
             <span>Hadir: {stats.hadir} ({stats.persentase}%)</span>
+            <span>Sakit: {stats.sakit}</span>
+            <span>Izin: {stats.izin}</span>
           </div>
         </div>
 
@@ -1683,33 +2008,46 @@ Segera lakukan absensi melalui sistem.
           </select>
         </div>
 
+        {/* ⭐ FILTER STATUS */}
+        <div className="filter-group-mobile">
+          <label>📊</label>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            {statusOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="filter-count-mobile">
           <span>📊 {filteredData.length} data</span>
         </div>
       </div>
 
-      {/* ==================== INFO DEVELOPER ==================== */}
-      {isDeveloper && (
-        <div className="filter-info-mobile" style={{
-          padding: '8px 12px',
-          background: 'rgba(244,67,54,0.08)',
-          borderRadius: '8px',
-          marginBottom: '12px',
-          border: '1px solid rgba(244,67,54,0.2)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '8px',
-          fontSize: '12px',
-          color: 'var(--text-muted)'
-        }}>
-          <span>💻 Mode <strong style={{ color: '#f44336' }}>Developer</strong></span>
-          <span>📊 Total: <strong style={{ color: '#f44336' }}>{filteredData.length}</strong> data</span>
-          <span style={{ color: '#f44336', fontWeight: 'bold' }}>🗑️ Bisa hapus semua</span>
-          <span style={{ color: '#ff9800', fontWeight: 'bold' }}>🔔 Bisa kirim pengingat</span>
-        </div>
-      )}
+      {/* ==================== INFO FILTER ==================== */}
+      <div className="filter-info-mobile" style={{
+        padding: '8px 12px',
+        background: 'rgba(255,152,0,0.08)',
+        borderRadius: '8px',
+        marginBottom: '12px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '8px',
+        fontSize: '12px',
+        color: 'var(--text-muted)'
+      }}>
+        <span>📋 Menampilkan <strong style={{ color: '#ff9800' }}>{filteredData.length}</strong> data</span>
+        {filterJabatan !== 'all' && <span>📋 Filter: <strong style={{ color: '#ff9800' }}>{filterJabatan}</strong></span>}
+        {filterDepartemen !== 'all' && <span>🏢 Filter: <strong style={{ color: '#ff9800' }}>{filterDepartemen}</strong></span>}
+        {filterStatus !== 'all' && <span>📊 Status: <strong style={{ color: '#ff9800' }}>{filterStatus}</strong></span>}
+        {filteredData.some(d => d.isFromIzin) && (
+          <span>📝 <strong style={{ color: '#00bcd4' }}>{filteredData.filter(d => d.isFromIzin).length}</strong> dari izin</span>
+        )}
+        {isDeveloper && (
+          <span style={{ color: '#f44336', fontWeight: 'bold' }}>💻 Developer Mode</span>
+        )}
+      </div>
 
       {/* ==================== TABLE - CARD VIEW ==================== */}
       <div className="table-container-mobile">
@@ -1722,6 +2060,17 @@ Segera lakukan absensi melalui sistem.
               <button 
                 className="btn-view-all-mobile"
                 onClick={() => setFilterDate('all')}
+                style={{
+                  padding: '8px 16px',
+                  background: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  marginTop: '12px'
+                }}
               >
                 📋 Lihat Semua Data
               </button>
@@ -1735,15 +2084,32 @@ Segera lakukan absensi melalui sistem.
               const hasAccount = usersAuth.some(u => u.staffId == item.staffId || u.uid == item.staffId);
               const staff = staffList.find(s => s.id == item.staffId);
               const hasWA = getStaffPhoneNumber(staff);
+              const isFromIzin = item.isFromIzin || false;
               
               let statusClass = 'status-hadir-mobile';
               let statusLabel = '✅ Hadir';
+              let statusIcon = '✅';
+              
               if (item.status === 'Pulang') {
                 statusClass = 'status-pulang-mobile';
                 statusLabel = '🏠 Pulang';
+                statusIcon = '🏠';
+              } else if (item.status === 'Sakit') {
+                statusClass = 'status-sakit-mobile';
+                statusLabel = '🤒 Sakit';
+                statusIcon = '🤒';
+              } else if (item.status === 'Izin') {
+                statusClass = 'status-izin-mobile';
+                statusLabel = '📝 Izin';
+                statusIcon = '📝';
+              } else if (item.status === 'Alpha' || item.status === 'Tidak Hadir') {
+                statusClass = 'status-alpha-mobile';
+                statusLabel = '❌ Alpha';
+                statusIcon = '❌';
               } else if (isLate) {
                 statusClass = 'status-terlambat-mobile';
                 statusLabel = '⏰ Terlambat';
+                statusIcon = '⏰';
               }
               
               return (
@@ -1760,13 +2126,35 @@ Segera lakukan absensi melalui sistem.
                       />
                       {hasAccount && <span className="card-badge-mobile" title="Memiliki akun">✅</span>}
                       {hasWA && <span className="card-wa-badge-mobile" title="WA terdaftar">📱</span>}
+                      {isFromIzin && <span className="card-izin-badge" style={{
+                        fontSize: '10px',
+                        background: '#00bcd4',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        marginLeft: '2px'
+                      }}>📝</span>}
                     </div>
                     <div className="card-info-mobile">
                       <div className="card-name-mobile">{item.nama}</div>
+                      <div className="card-class-mobile">{item.jabatan || '-'}</div>
                       <div className="card-id-mobile">#{item.staffId}</div>
                     </div>
                     <div className="card-status-mobile">
                       <span className={`status-badge-mobile ${statusClass}`}>{statusLabel}</span>
+                      {isFromIzin && (
+                        <span className="izin-source-badge" style={{
+                          fontSize: '9px',
+                          background: '#00bcd4',
+                          color: 'white',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          marginLeft: '4px',
+                          display: 'inline-block'
+                        }}>
+                          📝 Izin
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="card-body-mobile">
@@ -1795,15 +2183,38 @@ Segera lakukan absensi melalui sistem.
                         {hasWA || '-'}
                       </span>
                     </div>
+                    {isFromIzin && (
+                      <div className="card-row-mobile">
+                        <span className="card-label-mobile">📝 Sumber</span>
+                        <span className="card-value-mobile" style={{ color: '#00bcd4', fontWeight: 'bold' }}>
+                          Dari Izin {item.izinType ? `(${item.izinType})` : ''}
+                          {item.approvedBy && ` • Approved: ${item.approvedBy}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {canSimulate && (
                     <div className="card-footer-mobile">
                       <button 
                         className="btn-delete-mobile" 
                         onClick={() => deleteStaffAttendance(item.id)}
+                        style={{
+                          padding: '4px 12px',
+                          background: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '11px'
+                        }}
                       >
                         🗑️ Hapus
                       </button>
+                      {isFromIzin && (
+                        <span style={{ fontSize: '10px', color: '#00bcd4', marginLeft: 'auto' }}>
+                          📝 Auto dari Izin
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1833,11 +2244,10 @@ Segera lakukan absensi melalui sistem.
             </span>
           )}
         </p>
-        {isDeveloper && (
-          <p className="footer-dev-info-mobile" style={{ color: '#f44336', fontWeight: 'bold' }}>
-            💻 Mode Developer Aktif - Total Data: {filteredData.length} • 🗑️ Bisa hapus semua
-          </p>
-        )}
+        <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          {filteredData.some(d => d.isFromIzin) && `📝 ${filteredData.filter(d => d.isFromIzin).length} data dari izin`}
+          {isDeveloper && ` • 💻 Mode Developer Aktif - Total Data: ${filteredData.length} • 🗑️ Bisa hapus semua`}
+        </p>
       </div>
 
       {/* ==================== MODAL SIMULASI ==================== */}
@@ -1860,10 +2270,25 @@ Segera lakukan absensi melalui sistem.
                   value={searchStaff}
                   onChange={(e) => setSearchStaff(e.target.value)}
                   className="search-input-mobile"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    background: 'var(--input-bg)',
+                    color: 'var(--text-color)',
+                    fontSize: '14px'
+                  }}
                 />
               </div>
               
-              <div className="student-list-mobile">
+              <div className="student-list-mobile" style={{
+                maxHeight: '250px',
+                overflowY: 'auto',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                marginTop: '8px'
+              }}>
                 {staffList
                   .filter(s => 
                     s.nama?.toLowerCase().includes(searchStaff.toLowerCase()) ||
@@ -1879,51 +2304,123 @@ Segera lakukan absensi melalui sistem.
                         key={s.id}
                         className={`student-item-mobile ${selectedStaff?.id === s.id ? 'selected' : ''}`}
                         onClick={() => setSelectedStaff(s)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--border-color)',
+                          background: selectedStaff?.id === s.id ? 'rgba(255,152,0,0.1)' : 'transparent'
+                        }}
                       >
                         <img 
                           src={photo} 
                           alt={s.nama}
                           className="student-avatar-small-mobile"
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            objectFit: 'cover'
+                          }}
                           onError={(e) => {
                             const initial = s.nama ? s.nama.charAt(0).toUpperCase() : 'S';
                             e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=ff9800&color=fff&size=64&bold=true`;
                           }}
                         />
-                        <div className="student-item-info-mobile">
-                          <span className="student-item-name-mobile">{s.nama}</span>
-                          <span className="student-item-class-mobile">{s.jabatan || '-'}</span>
-                          <span className="student-item-id-mobile">ID: {s.id}</span>
+                        <div className="student-item-info-mobile" style={{ flex: 1 }}>
+                          <span className="student-item-name-mobile" style={{ fontWeight: 'bold', fontSize: '13px' }}>
+                            {s.nama}
+                          </span>
+                          <span className="student-item-class-mobile" style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                            {s.jabatan || '-'}
+                          </span>
+                          <span className="student-item-id-mobile" style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                            ID: {s.id}
+                          </span>
+                          <span className="student-item-dept-mobile" style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                            {s.departemen || '-'}
+                          </span>
                         </div>
-                        <div className="student-item-badges-mobile">
+                        <div className="student-item-badges-mobile" style={{ display: 'flex', gap: '4px' }}>
                           {hasAcc && <span className="student-item-badge-mobile" title="Memiliki akun">✅</span>}
                           {hasWA && <span className="student-item-wa-mobile" title="WA terdaftar">📱</span>}
                         </div>
                       </div>
                     );
                   })}
+                {staffList.filter(s => 
+                  s.nama?.toLowerCase().includes(searchStaff.toLowerCase()) ||
+                  s.id?.toString().includes(searchStaff)
+                ).length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    Staff tidak ditemukan
+                  </div>
+                )}
               </div>
               
               {selectedStaff && (
-                <div className="selected-student-mobile">
+                <div className="selected-student-mobile" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  background: 'rgba(255,152,0,0.08)',
+                  borderRadius: '8px',
+                  marginTop: '12px'
+                }}>
                   <img 
                     src={getStaffPhoto(selectedStaff.id, selectedStaff.nama)} 
                     alt={selectedStaff.nama}
                     className="student-avatar-small-mobile"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      objectFit: 'cover'
+                    }}
                     onError={(e) => {
                       const initial = selectedStaff.nama ? selectedStaff.nama.charAt(0).toUpperCase() : 'S';
                       e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=ff9800&color=fff&size=64&bold=true`;
                     }}
                   />
-                  <div className="selected-student-info-mobile">
+                  <div className="selected-student-info-mobile" style={{ flex: 1 }}>
                     <div className="selected-name-mobile"><strong>{selectedStaff.nama}</strong></div>
-                    <div className="selected-class-mobile">{selectedStaff.jabatan || '-'}</div>
+                    <div className="selected-class-mobile">{selectedStaff.jabatan || '-'} • {selectedStaff.departemen || '-'}</div>
                     <div className="selected-id-mobile">🆔 ID: {selectedStaff.id}</div>
                   </div>
                   {getStaffPhoneNumber(selectedStaff) ? (
-                    <span className="wa-status-mobile" title="WA terdaftar">📱</span>
+                    <span className="wa-status-mobile" title="WA terdaftar" style={{ color: '#25d366', fontWeight: 'bold' }}>📱</span>
                   ) : (
-                    <span className="wa-status-no-mobile" title="WA tidak terdaftar">⚠️</span>
+                    <span className="wa-status-no-mobile" title="WA tidak terdaftar" style={{ color: '#f44336' }}>⚠️</span>
                   )}
+                </div>
+              )}
+
+              {/* ⭐ Status Selection untuk Simulasi Masuk */}
+              {simulateType === 'in' && (
+                <div className="form-group-mobile" style={{ marginTop: '12px' }}>
+                  <label>📊 Status</label>
+                  <select 
+                    value={simulateStatus} 
+                    onChange={(e) => setSimulateStatus(e.target.value)} 
+                    className="status-select-mobile"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '8px',
+                      background: 'var(--input-bg)',
+                      color: 'var(--text-color)',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="hadir">✅ Hadir</option>
+                    <option value="izin">📝 Izin</option>
+                    <option value="sakit">🤒 Sakit</option>
+                    <option value="alpha">❌ Alpha</option>
+                  </select>
                 </div>
               )}
 
@@ -1937,7 +2434,8 @@ Segera lakukan absensi melalui sistem.
                 marginTop: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                flexWrap: 'wrap'
               }}>
                 <span>📱</span>
                 <span>
@@ -1947,26 +2445,61 @@ Segera lakukan absensi melalui sistem.
                       : '⚠️ WA tidak terdaftar'
                     : 'Pilih staff untuk melihat nomor WA'}
                 </span>
-                {simulateType === 'in' && (
+                {simulateType === 'in' && simulateStatus === 'hadir' && selectedStaff && (
                   <span style={{ color: '#4caf50', fontWeight: 'bold', marginLeft: 'auto' }}>
                     ✅ Akan kirim notifikasi
                   </span>
                 )}
-                {simulateType === 'out' && (
+                {simulateType === 'in' && simulateStatus !== 'hadir' && selectedStaff && (
+                  <span style={{ color: '#ff9800', fontWeight: 'bold', marginLeft: 'auto' }}>
+                    ⚠️ Tidak kirim notifikasi (status non-hadir)
+                  </span>
+                )}
+                {simulateType === 'out' && selectedStaff && (
                   <span style={{ color: '#4caf50', fontWeight: 'bold', marginLeft: 'auto' }}>
                     ✅ Akan kirim notifikasi pulang
                   </span>
                 )}
               </div>
             </div>
-            <div className="modal-footer-mobile">
-              <button className="btn-cancel-mobile" onClick={closeSimulateModal}>Batal</button>
+            <div className="modal-footer-mobile" style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px',
+              padding: '16px',
+              borderTop: '1px solid var(--border-color)',
+              marginTop: '16px'
+            }}>
+              <button 
+                className="btn-cancel-mobile" 
+                onClick={closeSimulateModal}
+                style={{
+                  padding: '8px 20px',
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  color: 'var(--text-color)',
+                  cursor: 'pointer'
+                }}
+              >
+                Batal
+              </button>
               <button 
                 className="btn-save-mobile" 
                 onClick={handleSimulateAttendance}
                 disabled={!selectedStaff || simulateLoading}
+                style={{
+                  padding: '8px 24px',
+                  background: (!selectedStaff || simulateLoading) ? '#666' : '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: (!selectedStaff || simulateLoading) ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }}
               >
-                {simulateLoading ? '⏳...' : simulateType === 'in' ? '✅ Simpan' : '🏠 Simpan'}
+                {simulateLoading ? '⏳...' : simulateType === 'in' ? '✅ Simpan Masuk' : '🏠 Simpan Pulang'}
               </button>
             </div>
           </div>

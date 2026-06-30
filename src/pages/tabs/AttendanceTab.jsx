@@ -27,6 +27,18 @@ ChartJS.register(
 
 const API_BASE_URL = 'https://backendtest-azure.vercel.app/api';
 
+// ==================== MAP STATUS IZIN KE STATUS ABSENSI ====================
+const mapIzinTypeToAttendanceStatus = (izinType) => {
+  const statusMap = {
+    'sakit': 'Sakit',
+    'keperluan': 'Izin',
+    'izin': 'Izin',
+    'dispensasi': 'Izin',
+    'cuti': 'Izin'
+  };
+  return statusMap[izinType] || 'Izin';
+};
+
 const AttendanceTab = ({ user }) => {
   // ==================== STATE ====================
   const [attendanceData, setAttendanceData] = useState([]);
@@ -37,6 +49,7 @@ const AttendanceTab = ({ user }) => {
   const [filterDate, setFilterDate] = useState('today');
   const [filterKelas, setFilterKelas] = useState('all');
   const [filterJurusan, setFilterJurusan] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all'); // ⭐ NEW: Filter status absensi
   const [photoCache, setPhotoCache] = useState({});
   const [chartAnimated, setChartAnimated] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
@@ -404,6 +417,56 @@ Segera lakukan absensi melalui sistem.
     return result;
   }, [getStudentPhoneNumber, sendWhatsAppNotification, user, schoolName]);
 
+  // ==================== ⭐ SEND IZIN NOTIFICATION ====================
+  const sendIzinNotification = useCallback(async (student, izinData) => {
+    const phoneNumber = getStudentPhoneNumber(student);
+    if (!phoneNumber) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    const schoolNameText = schoolName || 'Sekolah';
+    const dateStr = new Date().toLocaleDateString('id-ID', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    const statusText = mapIzinTypeToAttendanceStatus(izinData.type);
+    const typeText = izinData.type === 'sakit' ? '🤒 Sakit' : '📝 Keperluan';
+
+    const message = `*📋 NOTIFIKASI IZIN - ${schoolNameText}*
+
+👨‍🎓 *Siswa:* ${student.nama}
+🆔 *ID:* ${student.id || student.fpId || '-'}
+📚 *Kelas:* ${student.kelas || '-'} - ${student.jurusan || '-'}
+📅 *Tanggal:* ${dateStr}
+📋 *Jenis:* ${typeText}
+🕐 *Tanggal Izin:* ${izinData.startDate} - ${izinData.endDate}
+✅ *Status Absensi:* ${statusText}
+
+📝 *Alasan:* ${izinData.reason || '-'}
+
+--- 
+📱 *Sistem Absensi IoT*
+🔔 Notifikasi ini dikirim secara otomatis untuk izin yang disetujui.`;
+
+    const result = await sendWhatsAppNotification(phoneNumber, message, 'izin');
+
+    if (result.success) {
+      try {
+        await logActivity('send_izin_notification', 
+          `Notifikasi izin ke ${student.nama} (${phoneNumber}) - ${typeText}`,
+          user
+        );
+      } catch (e) {
+        console.warn('⚠️ Logging failed:', e);
+      }
+    }
+
+    return result;
+  }, [getStudentPhoneNumber, sendWhatsAppNotification, user, schoolName]);
+
   // ==================== CHECK IN / CHECK OUT FUNCTIONS ====================
   
   const handleCheckIn = useCallback(async (studentId, options = {}) => {
@@ -473,7 +536,10 @@ Segera lakukan absensi melalui sistem.
         status: attendanceStatus,
         timestamp: Date.now(),
         checkedInBy: user?.nama || 'Sistem',
-        isSimulate: simulate || false
+        isSimulate: simulate || false,
+        isFromIzin: false, // ⭐ Tanda ini bukan dari izin
+        izinId: null,
+        izinType: null
       };
 
       await set(attendanceRef, attendanceRecord);
@@ -1051,6 +1117,30 @@ Segera lakukan absensi melalui sistem.
             Object.keys(dailyRecords).forEach(id => {
               const record = dailyRecords[id];
               if (record) {
+                // ⭐ Tentukan status yang benar, termasuk dari izin
+                let status = record.status || 'Tidak Hadir';
+                
+                // Jika record berasal dari izin, gunakan status yang sudah ditentukan
+                if (record.isFromIzin && record.izinType) {
+                  // Status sudah ditentukan saat insert dari izin
+                  // Tapi pastikan tidak override jika sudah ada status lain
+                  if (record.status) {
+                    status = record.status;
+                  } else {
+                    status = mapIzinTypeToAttendanceStatus(record.izinType);
+                  }
+                } else if (record.out) {
+                  status = 'Pulang';
+                } else if (record.in) {
+                  if (record.isLate) {
+                    status = 'Hadir (Terlambat)';
+                  } else {
+                    status = 'Hadir';
+                  }
+                } else if (record.status) {
+                  status = record.status;
+                }
+                
                 attendanceList.push({
                   id: date + "-" + id,
                   studentId: id,
@@ -1060,11 +1150,16 @@ Segera lakukan absensi melalui sistem.
                   nama: record.nama,
                   kelas: record.kelas,
                   jurusan: record.jurusan,
-                  status: record.out ? "Pulang" : (record.in ? (record.isLate ? "Hadir (Terlambat)" : "Hadir") : "Tidak Hadir"),
+                  status: status,
                   isLate: record.isLate || false,
                   delayMinutes: record.delayMinutes || 0,
                   timestamp: record.timestamp || Date.now(),
-                  isSimulate: record.isSimulate || false
+                  isSimulate: record.isSimulate || false,
+                  isFromIzin: record.isFromIzin || false, // ⭐ Tanda dari izin
+                  izinId: record.izinId || null,
+                  izinType: record.izinType || null,
+                  checkedInBy: record.checkedInBy || 'Sistem',
+                  approvedBy: record.approvedBy || null
                 });
               }
             });
@@ -1138,8 +1233,30 @@ Segera lakukan absensi melalui sistem.
       data = data.filter(a => a.date === filterDate);
     }
 
+    // ⭐ FILTER STATUS
+    if (filterStatus !== 'all') {
+      data = data.filter(a => {
+        if (filterStatus === 'hadir') {
+          return a.status === 'Hadir' || a.status === 'Hadir (Terlambat)';
+        }
+        if (filterStatus === 'sakit') {
+          return a.status === 'Sakit';
+        }
+        if (filterStatus === 'izin') {
+          return a.status === 'Izin';
+        }
+        if (filterStatus === 'alpha') {
+          return a.status === 'Alpha' || a.status === 'Tidak Hadir';
+        }
+        if (filterStatus === 'pulang') {
+          return a.status === 'Pulang';
+        }
+        return a.status === filterStatus;
+      });
+    }
+
     return data;
-  }, [attendanceData, filterDate, filterKelas, filterJurusan, isSiswa, studentInfo, user]);
+  }, [attendanceData, filterDate, filterKelas, filterJurusan, filterStatus, isSiswa, studentInfo, user]);
 
   const filteredStudents = useMemo(() => {
     let result = [...students];
@@ -1171,22 +1288,41 @@ Segera lakukan absensi melalui sistem.
     const totalSiswa = filteredStudents.length;
     const hadirSet = new Set();
     const pulangSet = new Set();
+    const sakitSet = new Set();
+    const izinSet = new Set();
+    const alphaSet = new Set();
 
     filteredData.forEach(item => {
-      if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Hadir (Terlambat)') {
+      const status = item.status || '';
+      
+      if (status === 'Hadir' || status === 'Pulang' || status === 'Hadir (Terlambat)') {
         hadirSet.add(item.studentId);
       }
-      if (item.status === 'Pulang') {
+      if (status === 'Pulang') {
         pulangSet.add(item.studentId);
+      }
+      if (status === 'Sakit') {
+        sakitSet.add(item.studentId);
+      }
+      if (status === 'Izin') {
+        izinSet.add(item.studentId);
+      }
+      if (status === 'Alpha' || status === 'Tidak Hadir') {
+        alphaSet.add(item.studentId);
       }
     });
 
-    const hadir = hadirSet.size;
+    // Gabungkan semua yang hadir (termasuk sakit dan izin) untuk kehadiran
+    const allHadir = new Set([...hadirSet, ...sakitSet, ...izinSet]);
+    const hadir = allHadir.size;
     const pulang = pulangSet.size;
+    const sakit = sakitSet.size;
+    const izin = izinSet.size;
+    const alpha = alphaSet.size;
     const totalTransaksi = filteredData.length;
     const persentase = totalSiswa > 0 ? Math.round((hadir / totalSiswa) * 100) : 0;
 
-    return { hadir, pulang, totalTransaksi, totalSiswa, persentase };
+    return { hadir, pulang, sakit, izin, alpha, totalTransaksi, totalSiswa, persentase };
   }, [filteredData, filteredStudents]);
 
   // ==================== HITUNG SISWA BELUM ABSEN HARI INI ====================
@@ -1194,7 +1330,7 @@ Segera lakukan absensi melalui sistem.
   const todayCheckedIn = useMemo(() => {
     const checkedIn = new Set();
     attendanceData
-      .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang' || a.status === 'Hadir (Terlambat)'))
+      .filter(a => a.date === today && (a.status === 'Hadir' || a.status === 'Pulang' || a.status === 'Hadir (Terlambat)' || a.status === 'Sakit' || a.status === 'Izin'))
       .forEach(a => checkedIn.add(a.studentId));
     return checkedIn;
   }, [attendanceData, today]);
@@ -1205,14 +1341,14 @@ Segera lakukan absensi melalui sistem.
 
   // ==================== CHART DATA ====================
   const donutData = useMemo(() => ({
-    labels: ['Hadir', 'Tidak Hadir'],
+    labels: ['Hadir', 'Sakit', 'Izin', 'Tidak Hadir'],
     datasets: [{
-      data: [stats.hadir, stats.totalSiswa - stats.hadir],
-      backgroundColor: ['#4caf50', '#f44336'],
+      data: [stats.hadir, stats.sakit, stats.izin, stats.totalSiswa - stats.hadir - stats.sakit - stats.izin],
+      backgroundColor: ['#4caf50', '#ff9800', '#00bcd4', '#f44336'],
       borderWidth: 0,
       hoverOffset: 10
     }]
-  }), [stats.hadir, stats.totalSiswa]);
+  }), [stats.hadir, stats.sakit, stats.izin, stats.totalSiswa]);
 
   const donutOptions = useMemo(() => ({
     responsive: true,
@@ -1259,7 +1395,7 @@ Segera lakukan absensi melalui sistem.
 
     const hadirSet = new Set();
     filteredData.forEach(item => {
-      if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Hadir (Terlambat)') {
+      if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Hadir (Terlambat)' || item.status === 'Sakit' || item.status === 'Izin') {
         hadirSet.add(item.studentId);
       }
     });
@@ -1364,7 +1500,7 @@ Segera lakukan absensi melalui sistem.
       const dayAttendance = filteredData.filter(a => a.date === dateStr);
       const hadirSet = new Set();
       dayAttendance.forEach(item => {
-        if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Hadir (Terlambat)') {
+        if (item.status === 'Hadir' || item.status === 'Pulang' || item.status === 'Hadir (Terlambat)' || item.status === 'Sakit' || item.status === 'Izin') {
           hadirSet.add(item.studentId);
         }
       });
@@ -1493,7 +1629,7 @@ Segera lakukan absensi melalui sistem.
     const date = attendanceToDelete.date;
     const studentId = attendanceToDelete.studentId;
 
-    if (!window.confirm(`⚠️ Yakin ingin menghapus data absensi siswa "${studentName}"?\n\nTanggal: ${date}\nID: ${studentId}\n\nData akan dihapus PERMANEN dari database!`)) {
+    if (!window.confirm(`⚠️ Yakin ingin menghapus data absensi siswa "${studentName}"?\n\nTanggal: ${date}\nID: ${studentId}\nStatus: ${attendanceToDelete.status}\n\nData akan dihapus PERMANEN dari database!`)) {
       return;
     }
 
@@ -1556,6 +1692,8 @@ Segera lakukan absensi melalui sistem.
       filterDesc = `Jurusan ${filterJurusan}`;
     } else if (filterDate !== 'all') {
       filterDesc = `Tanggal ${filterDate}`;
+    } else if (filterStatus !== 'all') {
+      filterDesc = `Status ${filterStatus}`;
     } else {
       filterDesc = 'SEMUA DATA';
     }
@@ -1628,7 +1766,7 @@ Segera lakukan absensi melalui sistem.
     } finally {
       setDeleteAllLoading(false);
     }
-  }, [isDeveloper, filteredData, filterKelas, filterJurusan, filterDate, user, role]);
+  }, [isDeveloper, filteredData, filterKelas, filterJurusan, filterDate, filterStatus, user, role]);
 
   // ==================== EXPORT FUNCTIONS ====================
   const exportToExcel = useCallback(() => {
@@ -1646,14 +1784,15 @@ Segera lakukan absensi melalui sistem.
       csv += `"Periode: ${periodText}"\n`;
       csv += `"Filter Kelas: ${filterKelas === 'all' ? 'Semua' : filterKelas}"\n`;
       csv += `"Filter Jurusan: ${filterJurusan === 'all' ? 'Semua' : filterJurusan}"\n`;
+      csv += `"Filter Status: ${filterStatus === 'all' ? 'Semua' : filterStatus}"\n`;
       csv += `"Tanggal Cetak: ${dateNow} ${timeNow}"\n\n`;
-      csv += `"No","Tanggal","Waktu Masuk","Waktu Pulang","ID","Nama","Kelas","Jurusan","Status","Delay (menit)","WA Orang Tua","Simulasi"\n`;
+      csv += `"No","Tanggal","Waktu Masuk","Waktu Pulang","ID","Nama","Kelas","Jurusan","Status","Delay (menit)","WA Orang Tua","Simulasi","Dari Izin","Diapprove Oleh"\n`;
 
       filteredData.forEach((item, index) => {
         const student = students.find(s => s.id == item.studentId);
         const parentPhone = getStudentPhoneNumber(student) || '-';
-        const status = item.status === 'Pulang' ? 'Pulang' : (item.isLate ? 'Terlambat' : 'Hadir');
-        csv += `"${index + 1}","${item.date}","${item.timeIn || '-'}","${item.timeOut || '-'}","${item.studentId}","${item.nama}","${item.kelas || '-'}","${item.jurusan || '-'}","${status}","${item.delayMinutes || 0}","${parentPhone}","${item.isSimulate ? 'Ya' : 'Tidak'}"\n`;
+        const status = item.status || 'Tidak Hadir';
+        csv += `"${index + 1}","${item.date}","${item.timeIn || '-'}","${item.timeOut || '-'}","${item.studentId}","${item.nama}","${item.kelas || '-'}","${item.jurusan || '-'}","${status}","${item.delayMinutes || 0}","${parentPhone}","${item.isSimulate ? 'Ya' : 'Tidak'}","${item.isFromIzin ? 'Ya' : 'Tidak'}","${item.approvedBy || '-'}"\n`;
       });
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1689,7 +1828,7 @@ Segera lakukan absensi melalui sistem.
     } finally {
       setExportLoading(false);
     }
-  }, [filterDate, filterKelas, filterJurusan, filteredData, students, getStudentPhoneNumber, user, schoolName]);
+  }, [filterDate, filterKelas, filterJurusan, filterStatus, filteredData, students, getStudentPhoneNumber, user, schoolName]);
 
   const exportToPDF = useCallback(() => {
     setExportLoading(true);
@@ -1730,11 +1869,15 @@ Segera lakukan absensi melalui sistem.
             .status-hadir { color: #4caf50; font-weight: 600; }
             .status-pulang { color: #ff9800; font-weight: 600; }
             .status-terlambat { color: #f44336; font-weight: 600; }
+            .status-sakit { color: #ff9800; font-weight: 600; }
+            .status-izin { color: #00bcd4; font-weight: 600; }
+            .status-alpha { color: #f44336; font-weight: 600; }
             .footer { text-align: center; margin-top: 20px; padding-top: 10px; font-size: 10px; color: #888; border-top: 1px solid #ddd; }
             .footer .signature { margin-top: 20px; display: flex; justify-content: flex-end; gap: 60px; }
             .footer .signature div { text-align: center; font-size: 12px; }
             .footer .signature .line { width: 150px; border-top: 1px solid #333; margin-top: 30px; }
             .wa-column { color: #25d366; }
+            .izin-column { color: #00bcd4; }
             @media print { .no-print { display: none; } body { padding: 20px; } }
           </style>
         </head>
@@ -1747,6 +1890,7 @@ Segera lakukan absensi melalui sistem.
             <span><span class="label">📅 Periode:</span> <span class="value">${periodText}</span></span>
             <span><span class="label">📚 Kelas:</span> <span class="value">${filterKelas === 'all' ? 'Semua' : filterKelas}</span></span>
             <span><span class="label">🎓 Jurusan:</span> <span class="value">${filterJurusan === 'all' ? 'Semua' : filterJurusan}</span></span>
+            <span><span class="label">📊 Status:</span> <span class="value">${filterStatus === 'all' ? 'Semua' : filterStatus}</span></span>
             <span><span class="label">👥 Total Data:</span> <span class="value">${filteredData.length}</span></span>
             <span><span class="label">👤 Dicetak oleh:</span> <span class="value">${roleName}</span></span>
             <span><span class="label">📅 Tanggal Cetak:</span> <span class="value">${dateNow} ${timeNow}</span></span>
@@ -1766,6 +1910,7 @@ Segera lakukan absensi melalui sistem.
                 <th>Delay</th>
                 <th class="wa-column">📱 WA</th>
                 <th>Simulasi</th>
+                <th class="izin-column">📝 Izin</th>
               </tr>
             </thead>
             <tbody>
@@ -1774,16 +1919,14 @@ Segera lakukan absensi melalui sistem.
       filteredData.forEach((item, index) => {
         const student = students.find(s => s.id == item.studentId);
         const parentPhone = getStudentPhoneNumber(student) || '-';
-        const isLate = item.isLate && item.status !== 'Pulang';
+        const status = item.status || 'Tidak Hadir';
+        
         let statusClass = 'status-hadir';
-        let statusText = 'Hadir';
-        if (item.status === 'Pulang') {
-          statusClass = 'status-pulang';
-          statusText = 'Pulang';
-        } else if (isLate) {
-          statusClass = 'status-terlambat';
-          statusText = 'Terlambat';
-        }
+        if (status === 'Pulang') statusClass = 'status-pulang';
+        else if (status === 'Hadir (Terlambat)') statusClass = 'status-terlambat';
+        else if (status === 'Sakit') statusClass = 'status-sakit';
+        else if (status === 'Izin') statusClass = 'status-izin';
+        else if (status === 'Alpha' || status === 'Tidak Hadir') statusClass = 'status-alpha';
 
         printWindow.document.write(`
           <tr>
@@ -1795,10 +1938,11 @@ Segera lakukan absensi melalui sistem.
             <td>${item.nama}</td>
             <td>${item.kelas || '-'}</td>
             <td>${item.jurusan || '-'}</td>
-            <td class="${statusClass}">${statusText}</td>
+            <td class="${statusClass}">${status}</td>
             <td>${item.delayMinutes || 0} min</td>
             <td class="wa-column">${parentPhone}</td>
             <td>${item.isSimulate ? '✅ Ya' : '-'}</td>
+            <td class="izin-column">${item.isFromIzin ? '✅' : '-'}</td>
           </tr>
         `);
       });
@@ -1859,7 +2003,7 @@ Segera lakukan absensi melalui sistem.
     } finally {
       setExportLoading(false);
     }
-  }, [filterDate, filterKelas, filterJurusan, filteredData, students, getStudentPhoneNumber, user, schoolName]);
+  }, [filterDate, filterKelas, filterJurusan, filterStatus, filteredData, students, getStudentPhoneNumber, user, schoolName]);
 
   // ==================== RENDER ====================
   const dateOptions = [];
@@ -1873,6 +2017,16 @@ Segera lakukan absensi melalui sistem.
     dateOptions.push({ value: dateStr, label });
   }
 
+  // ⭐ STATUS FILTER OPTIONS
+  const statusOptions = [
+    { value: 'all', label: '📊 Semua Status' },
+    { value: 'hadir', label: '✅ Hadir' },
+    { value: 'sakit', label: '🤒 Sakit' },
+    { value: 'izin', label: '📝 Izin' },
+    { value: 'alpha', label: '❌ Alpha' },
+    { value: 'pulang', label: '🏠 Pulang' }
+  ];
+
   let filterButtonLabel = 'Semua Data';
   if (filterKelas !== 'all' && filterJurusan !== 'all') {
     filterButtonLabel = `Kelas ${filterKelas} & Jurusan ${filterJurusan}`;
@@ -1882,6 +2036,8 @@ Segera lakukan absensi melalui sistem.
     filterButtonLabel = `Jurusan ${filterJurusan}`;
   } else if (filterDate !== 'all') {
     filterButtonLabel = `Tanggal ${filterDate}`;
+  } else if (filterStatus !== 'all') {
+    filterButtonLabel = `Status ${filterStatus}`;
   }
 
   const totalDataToDelete = filteredData.length;
@@ -2125,6 +2281,44 @@ Segera lakukan absensi melalui sistem.
         </div>
       )}
 
+      {/* ===== ⭐ INFO BANNER - INTEGRASI IZIN ===== */}
+      <div className="izin-integration-banner" style={{
+        background: 'linear-gradient(135deg, rgba(0,188,212,0.10), rgba(0,188,212,0.04))',
+        borderRadius: '12px',
+        padding: '10px 16px',
+        marginBottom: '12px',
+        border: '1px solid rgba(0,188,212,0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        flexWrap: 'wrap',
+        fontSize: '12px'
+      }}>
+        <span style={{ fontSize: '18px' }}>📝</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          <strong style={{ color: '#00bcd4' }}>Izin Terintegrasi:</strong>
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          Siswa yang izin akan tercatat otomatis sebagai
+        </span>
+        <span style={{ color: '#ff9800', fontWeight: 'bold' }}>🤒 Sakit</span>
+        <span style={{ color: 'var(--text-muted)' }}>atau</span>
+        <span style={{ color: '#00bcd4', fontWeight: 'bold' }}>📝 Izin</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          sesuai jenis izin yang disetujui.
+        </span>
+        {filteredData.some(d => d.isFromIzin) && (
+          <span style={{ 
+            marginLeft: 'auto', 
+            color: '#4caf50',
+            fontWeight: 'bold',
+            fontSize: '11px'
+          }}>
+            ✅ {filteredData.filter(d => d.isFromIzin).length} data dari izin
+          </span>
+        )}
+      </div>
+
       {/* ===== DEVELOPER BANNER ===== */}
       {isDeveloper && (
         <div className="developer-banner-attendance" style={{
@@ -2337,6 +2531,18 @@ Segera lakukan absensi melalui sistem.
           <span className="stat-number-mobile">{stats.pulang}</span>
           <span className="stat-label-mobile">🏠 Pulang</span>
         </div>
+        <div className="stat-card-mobile stat-sakit-mobile">
+          <span className="stat-number-mobile">{stats.sakit}</span>
+          <span className="stat-label-mobile">🤒 Sakit</span>
+        </div>
+        <div className="stat-card-mobile stat-izin-mobile">
+          <span className="stat-number-mobile">{stats.izin}</span>
+          <span className="stat-label-mobile">📝 Izin</span>
+        </div>
+        <div className="stat-card-mobile stat-alpha-mobile">
+          <span className="stat-number-mobile">{stats.alpha}</span>
+          <span className="stat-label-mobile">❌ Alpha</span>
+        </div>
         <div className="stat-card-mobile stat-persen-mobile">
           <span className="stat-number-mobile">{stats.persentase}%</span>
           <span className="stat-label-mobile">📊 Kehadiran</span>
@@ -2366,6 +2572,8 @@ Segera lakukan absensi melalui sistem.
           <div className="chart-info-mobile">
             <span>Total Siswa: {stats.totalSiswa}</span>
             <span>Hadir: {stats.hadir} ({stats.persentase}%)</span>
+            <span>Sakit: {stats.sakit}</span>
+            <span>Izin: {stats.izin}</span>
           </div>
         </div>
 
@@ -2425,6 +2633,16 @@ Segera lakukan absensi melalui sistem.
               ))}
             </select>
           </div>
+          
+          {/* ⭐ FILTER STATUS */}
+          <div className="filter-group-mobile">
+            <label>📊</label>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              {statusOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
           <div className="filter-count-mobile">
             <span>📊 {filteredData.length} data</span>
@@ -2450,6 +2668,7 @@ Segera lakukan absensi melalui sistem.
           <span>📚 Kelas: <strong style={{ color: '#00bcd4' }}>{studentInfo.kelas || user?.kelas || '-'}</strong></span>
           <span>🎓 Jurusan: <strong style={{ color: '#00bcd4' }}>{studentInfo.jurusan || user?.jurusan || '-'}</strong></span>
           <span>📊 {filteredData.length} data</span>
+          <span>{filteredData.some(d => d.isFromIzin) && `📝 ${filteredData.filter(d => d.isFromIzin).length} dari izin`}</span>
         </div>
       )}
 
@@ -2471,9 +2690,11 @@ Segera lakukan absensi melalui sistem.
           <span>📊 Total: <strong style={{ color: '#2196f3' }}>{filteredData.length}</strong> data</span>
           {filterKelas !== 'all' && <span>📚 Filter: <strong style={{ color: '#2196f3' }}>{filterKelas}</strong></span>}
           {filterJurusan !== 'all' && <span>🎓 Filter: <strong style={{ color: '#2196f3' }}>{filterJurusan}</strong></span>}
+          {filterStatus !== 'all' && <span>📊 Status: <strong style={{ color: '#2196f3' }}>{filterStatus}</strong></span>}
           <span style={{ color: '#4caf50', fontWeight: 'bold' }}>✨ Bisa simulasi</span>
           <span style={{ color: '#ff9800', fontWeight: 'bold' }}>🔔 Bisa kirim pengingat</span>
           <span style={{ color: '#00bcd4', fontWeight: 'bold' }}>🤖 Auto reminder</span>
+          <span>{filteredData.some(d => d.isFromIzin) && `📝 ${filteredData.filter(d => d.isFromIzin).length} dari izin`}</span>
         </div>
       )}
 
@@ -2495,9 +2716,11 @@ Segera lakukan absensi melalui sistem.
           <span>📊 Total: <strong style={{ color: '#9c27b0' }}>{filteredData.length}</strong> data</span>
           {filterKelas !== 'all' && <span>📚 Filter: <strong style={{ color: '#9c27b0' }}>{filterKelas}</strong></span>}
           {filterJurusan !== 'all' && <span>🎓 Filter: <strong style={{ color: '#9c27b0' }}>{filterJurusan}</strong></span>}
+          {filterStatus !== 'all' && <span>📊 Status: <strong style={{ color: '#9c27b0' }}>{filterStatus}</strong></span>}
           <span style={{ color: '#4caf50', fontWeight: 'bold' }}>✨ Bisa simulasi</span>
           <span style={{ color: '#ff9800', fontWeight: 'bold' }}>🔔 Bisa kirim pengingat</span>
           <span style={{ color: '#00bcd4', fontWeight: 'bold' }}>🤖 Auto reminder</span>
+          <span>{filteredData.some(d => d.isFromIzin) && `📝 ${filteredData.filter(d => d.isFromIzin).length} dari izin`}</span>
         </div>
       )}
 
@@ -2521,6 +2744,7 @@ Segera lakukan absensi melalui sistem.
           <span style={{ color: '#f44336', fontWeight: 'bold' }}>🗑️ Bisa hapus semua</span>
           <span style={{ color: '#ff9800', fontWeight: 'bold' }}>🔔 Bisa kirim pengingat</span>
           <span style={{ color: '#00bcd4', fontWeight: 'bold' }}>🤖 Auto reminder</span>
+          <span>{filteredData.some(d => d.isFromIzin) && `📝 ${filteredData.filter(d => d.isFromIzin).length} dari izin`}</span>
         </div>
       )}
 
@@ -2554,7 +2778,7 @@ Segera lakukan absensi melalui sistem.
         ) : (
           <div className="attendance-cards-mobile">
             {filteredData.map((item) => {
-              const isLate = item.isLate && item.status !== 'Pulang';
+              const isLate = item.isLate && item.status !== 'Pulang' && item.status !== 'Sakit' && item.status !== 'Izin';
               const photoUrl = getStudentPhoto(item.studentId, item.nama);
               const hasAccount = usersAuth.some(u => u.fpId == item.studentId);
               const student = students.find(s => s.id == item.studentId);
@@ -2562,16 +2786,32 @@ Segera lakukan absensi melalui sistem.
 
               let statusClass = 'status-hadir-mobile';
               let statusLabel = '✅ Hadir';
+              let statusIcon = '✅';
+              
               if (item.status === 'Pulang') {
                 statusClass = 'status-pulang-mobile';
                 statusLabel = '🏠 Pulang';
+                statusIcon = '🏠';
+              } else if (item.status === 'Sakit') {
+                statusClass = 'status-sakit-mobile';
+                statusLabel = '🤒 Sakit';
+                statusIcon = '🤒';
+              } else if (item.status === 'Izin') {
+                statusClass = 'status-izin-mobile';
+                statusLabel = '📝 Izin';
+                statusIcon = '📝';
+              } else if (item.status === 'Alpha' || item.status === 'Tidak Hadir') {
+                statusClass = 'status-alpha-mobile';
+                statusLabel = '❌ Alpha';
+                statusIcon = '❌';
               } else if (isLate) {
                 statusClass = 'status-terlambat-mobile';
                 statusLabel = '⏰ Terlambat';
+                statusIcon = '⏰';
               }
 
-              // Calculate can check out status
-              const canOut = student ? canCheckOut(student, item.timeIn) : false;
+              // Check if from izin
+              const isFromIzin = item.isFromIzin || false;
 
               return (
                 <div key={item.id} className="attendance-card-mobile">
@@ -2588,6 +2828,14 @@ Segera lakukan absensi melalui sistem.
                       {hasAccount && <span className="card-badge-mobile" title="Memiliki akun">✅</span>}
                       {hasWA && <span className="card-wa-badge-mobile" title="WA terdaftar">📱</span>}
                       {item.isSimulate && <span className="card-simulate-badge" title="Simulasi">🎯</span>}
+                      {isFromIzin && <span className="card-izin-badge" title="Dari Izin" style={{
+                        fontSize: '10px',
+                        background: '#00bcd4',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        marginLeft: '2px'
+                      }}>📝</span>}
                     </div>
                     <div className="card-info-mobile">
                       <div className="card-name-mobile">{item.nama}</div>
@@ -2596,6 +2844,19 @@ Segera lakukan absensi melalui sistem.
                     </div>
                     <div className="card-status-mobile">
                       <span className={`status-badge-mobile ${statusClass}`}>{statusLabel}</span>
+                      {isFromIzin && (
+                        <span className="izin-source-badge" style={{
+                          fontSize: '9px',
+                          background: '#00bcd4',
+                          color: 'white',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          marginLeft: '4px',
+                          display: 'inline-block'
+                        }}>
+                          📝 Izin
+                        </span>
+                      )}
                       {item.isSimulate && (
                         <span className="simulate-badge" style={{
                           fontSize: '9px',
@@ -2616,11 +2877,6 @@ Segera lakukan absensi melalui sistem.
                       <span className="card-value-mobile">
                         {item.timeIn || '-'}
                         {item.timeOut && ` → ${item.timeOut}`}
-                        {item.timeIn && !item.timeOut && student && (
-                          <span style={{ fontSize: '10px', color: canOut ? '#4caf50' : '#ff9800', marginLeft: '8px' }}>
-                            {canOut ? '✅ Bisa pulang' : '⏳ Belum waktunya'}
-                          </span>
-                        )}
                       </span>
                     </div>
                     <div className="card-row-mobile">
@@ -2637,6 +2893,15 @@ Segera lakukan absensi melalui sistem.
                         {hasWA || '-'}
                       </span>
                     </div>
+                    {isFromIzin && (
+                      <div className="card-row-mobile">
+                        <span className="card-label-mobile">📝 Sumber</span>
+                        <span className="card-value-mobile" style={{ color: '#00bcd4', fontWeight: 'bold' }}>
+                          Dari Izin {item.izinType ? `(${item.izinType})` : ''}
+                          {item.approvedBy && ` • Approved: ${item.approvedBy}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="card-footer-mobile">
                     {showDeleteButton && (
@@ -2656,9 +2921,9 @@ Segera lakukan absensi melalui sistem.
                         🗑️ Hapus
                       </button>
                     )}
-                    {(isGuru || isStaff) && !showDeleteButton && (
-                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        👁️ View only ({isGuru ? 'Guru' : 'Staff TU'})
+                    {isFromIzin && (
+                      <span style={{ fontSize: '10px', color: '#00bcd4', marginLeft: 'auto' }}>
+                        📝 Auto dari Izin
                       </span>
                     )}
                     {item.isSimulate && (
@@ -2697,6 +2962,7 @@ Segera lakukan absensi melalui sistem.
           🤖 Auto reminder: {autoReminderSent ? '✅ Aktif' : '⏳ Menunggu...'} 
           {absentToday.length > 0 && ` • ${absentToday.length} siswa belum absen`}
           {filteredData.some(d => d.isSimulate) && ` • 🎯 ${filteredData.filter(d => d.isSimulate).length} simulasi`}
+          {filteredData.some(d => d.isFromIzin) && ` • 📝 ${filteredData.filter(d => d.isFromIzin).length} dari izin`}
         </p>
       </div>
 
