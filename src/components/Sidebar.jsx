@@ -414,7 +414,10 @@ const Sidebar = ({
             ) : (
               <span className="sidebar-logo-icon">📱</span>
             )}
-            <h2 className="sidebar-school-name">{schoolName}</h2>
+            <div className="sidebar-school-name-wrapper">
+              <h2 className="sidebar-school-name">{schoolName}</h2>
+              <div className="sidebar-school-name-underline"></div>
+            </div>
           </div>
           <button className="sidebar-close" onClick={onToggleSidebar} aria-label="Close sidebar">
             ✖

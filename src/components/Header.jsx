@@ -97,7 +97,10 @@ const Header = ({
         <span className="header-logo-placeholder" style={{ display: schoolLogo ? 'none' : 'inline-block' }}>
           📱
         </span>
-        <span className="header-school-name">{schoolName}</span>
+        <div className="header-school-name-wrapper">
+          <span className="header-school-name">{schoolName}</span>
+          <span className="header-school-name-underline"></span>
+        </div>
         <span className="header-time">{currentTime}</span>
       </div>
       
